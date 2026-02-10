@@ -29,42 +29,61 @@ WebHarbour is a web-based app marketplace backend. The project is being built in
 - Email verification is planned but not implemented yet.
 - Additional domain modules (apps, reviews, moderation, analytics) are planned for later phases.
 
-## Next Phase (Planned)
-Focus: Core marketplace APIs with persisted data and role-based access.
-- Apps: create/update app listings, publish versions, list/search apps
-- Reviews: submit/edit/delete reviews, rating aggregation
-- Categories/Tags: manage and assign for discovery
-- Admin moderation: approve/reject apps, remove reviews
+## Phase 3 Plan (Core Marketplace)
+Focus: Core marketplace APIs with persisted data and role-based access. This phase does not include moderation or analytics.
 
-## Team Tasks (1-Day APIs)
-Below are three single-API tasks to split among 3 members. Each task should include route, controller, service, Prisma query, validation, and Swagger docs.
+## Phase 3 API Scope
+- `POST /apps` (role: `DEVELOPER`)
+- `GET /apps` (public)
+- `GET /apps/:id` (public)
+- `PATCH /apps/:id` (role: `DEVELOPER`, owner only)
+- `POST /apps/:id/publish` (role: `DEVELOPER`, owner only)
+- `POST /apps/:id/versions` (role: `DEVELOPER`, owner only)
+- `GET /apps/:id/versions` (public)
+- `GET /categories` (public)
+- `POST /categories` (role: `ADMIN`)
+- `GET /tags` (public)
+- `POST /tags` (role: `ADMIN`)
+- `POST /apps/:id/reviews` (role: `USER`)
+- `GET /apps/:id/reviews` (public)
+- `PATCH /apps/:id/reviews/:reviewId` (role: `USER`, owner only)
+- `DELETE /apps/:id/reviews/:reviewId` (role: `USER` owner or `ADMIN`)
 
-### Member 1 — Create App Listing API
-**Endpoint:** `POST /apps`  
-**Role:** `DEVELOPER`  
-**Request Body:** `{ name, description, categoryId, tags[] }`  
-**Expectation:**
-- Validate required fields
-- Create app record and attach tags
-- Return created app (id, name, description, category, tags, developerId, status=draft)
-- Add Swagger docs + error responses (400/401/403)
+## Phase 3 Prisma Schema Additions
+- `enum AppStatus { DRAFT PUBLISHED DEPRECATED }`
+- `Category` with `id`, `name` (unique)
+- `Tag` with `id`, `name` (unique)
+- `App` with `name`, `description`, `status`, `developerId`, `categoryId`, `tags`, timestamps
+- `AppVersion` with `appId`, `version`, `changelog?`, `downloadUrl`, timestamps
+- `Review` with `appId`, `userId`, `rating`, `comment?`, timestamps
+- Unique constraints: `@@unique([appId, version])`, `@@unique([appId, userId])`
 
-### Member 2 — Submit Review API
-**Endpoint:** `POST /apps/:appId/reviews`  
-**Role:** `USER`  
-**Request Body:** `{ rating, comment }`  
-**Expectation:**
-- One review per user per app
-- Validate rating 1–5
-- Store review and return summary
-- Add Swagger docs + error responses (400/401/404/409)
+## Team Tasks (4 Members, Parallel)
+Each member owns their API surface end-to-end: route, controller, service, Prisma queries, validation, Swagger docs, and error handling.
 
-### Member 3 — Admin Approve App API
-**Endpoint:** `PATCH /admin/apps/:appId/approve`  
-**Role:** `ADMIN`  
-**Expectation:**
-- Only approve apps in `pending` status
-- Update status to `approved` and return updated app
-- Add Swagger docs + error responses (401/403/404/409)
+### Member 1 — Prisma Schema + Migration
+Expectations:
+- Update `prisma/schema.prisma` with Phase 3 models and enums
+- Run migration `npx prisma migrate dev --name phase3_core`
+- Regenerate Prisma client
 
-If you want me to assign real names and exact schema fields, tell me the member names and final app schema.
+### Member 2 — Apps + Versions APIs
+Expectations:
+- Implement routes/controllers/services for apps + versions
+- Enforce `DEVELOPER` role and ownership checks
+- Return draft status on create, publish via `/apps/:id/publish`
+- Add Swagger docs and standard errors (400/401/403/404/409)
+
+### Member 3 — Categories + Tags APIs
+Expectations:
+- Implement category and tag list/create endpoints
+- Enforce `ADMIN` role on create
+- Add Swagger docs and standard errors (400/401/403)
+
+### Member 4 — Reviews APIs
+Expectations:
+- Implement review create/list/update/delete endpoints
+- Enforce one review per user per app
+- Validate rating is 1–5
+- Enforce owner checks and allow `ADMIN` delete
+- Add Swagger docs and standard errors (400/401/403/404/409)
