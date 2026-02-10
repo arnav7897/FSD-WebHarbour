@@ -11,28 +11,684 @@ enum Role {
   USER
   DEVELOPER
   ADMIN
+  MODERATOR
+}
+
+enum AppStatus {
+  DRAFT
+  UNDER_REVIEW
+  PUBLISHED
+  REJECTED
+  SUSPENDED
+  DEPRECATED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+enum ContentType {
+  SOFTWARE
+  PDF
+  EBOOK
+  TEMPLATE
+  PLUGIN
+  EXTENSION
+  ASSET
+  OTHER
+}
+
+enum Platform {
+  WINDOWS
+  MACOS
+  LINUX
+  WEB
+  MOBILE_IOS
+  MOBILE_ANDROID
+  CROSS_PLATFORM
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  name          String
-  email         String          @unique
-  passwordHash  String
-  role          Role            @default(USER)
-  refreshTokens RefreshToken[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  username          String?            @unique
+  passwordHash      String
+  avatarUrl         String?
+  bio               String?
+  role              Role               @default(USER)
+  isVerified        Boolean            @default(false)
+  emailVerifiedAt   DateTime?
+  refreshTokens     RefreshToken[]
+  apps              App[]
+  reviews           Review[]
+  downloads         Download[]
+  favorites         Favorite[]
+  reportsSubmitted  Report[]           @relation("UserReports") // User submitted reports
+  // Developer-specific fields
+  developerProfile  DeveloperProfile?
+  // Transaction fields
+  balance           Float              @default(0.00)
+  transactions      Transaction[]
+  // Version related fields
+  appVersions       AppVersion[] // Versions created by user
+  versionChangeLogs VersionChangeLog[] // Change logs authored by user
+  versionDownloads  VersionDownload[] // Downloads by user
+  moderationLogs    ModerationLog[] // Moderation actions by user
+  reportsModerated  Report[]           @relation("ModeratedReports") // Reports moderated by user
+  // Timestamps
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lastLoginAt       DateTime?
+  reports           Report[]
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model DeveloperProfile {
+  id                      Int       @id @default(autoincrement())
+  userId                  Int       @unique
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName             String?
+  website                 String?
+  githubUrl               String?
+  portfolioUrl            String?
+  description             String?
+  contactEmail            String?
+  isVerified              Boolean   @default(false)
+  verificationRequestedAt DateTime?
+  verifiedAt              DateTime?
+  apps                    App[]
+  // Stats (can be computed or cached)
+  totalDownloads          Int       @default(0)
+  averageRating           Float     @default(0.0)
+  // Timestamps
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model App {
+  id               Int     @id @default(autoincrement())
+  name             String
+  slug             String  @unique
+  description      String
+  shortDescription String?
+  iconUrl          String?
+  bannerUrl        String?
+  screenshots      Json? // Array of screenshot URLs
+
+  // Pricing
+  isFree        Boolean @default(true)
+  price         Float?  @default(0.00)
+  discountPrice Float?
+  isOnSale      Boolean @default(false)
+
+  // Content Details
+  contentType        ContentType @default(SOFTWARE)
+  platforms          Platform[] // Multi-select platforms
+  fileSize           String? // e.g., "2.5 GB", "50 MB"
+  systemRequirements String?
+  licenseType        String? // e.g., "MIT", "Commercial", "Freeware"
+  ageRating          String? // e.g., "E", "12+", "18+"
+
+  // Status & Ownership
+  status      AppStatus        @default(DRAFT)
+  developerId Int
+  developer   DeveloperProfile @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  categoryId  Int
+  category    Category         @relation(fields: [categoryId], references: [id])
+
+  // Metadata
+  tags           AppTag[]
+  versions       AppVersion[]
+  reviews        Review[]
+  downloads      Download[]
+  favorites      Favorite[]
+  reports        Report[] // Reports about this app
+  moderationLogs ModerationLog[]
+
+  // Stats (cached for performance)
+  downloadCount Int   @default(0)
+  reviewCount   Int   @default(0)
+  averageRating Float @default(0.0)
+  favoriteCount Int   @default(0)
+
+  // Timestamps
+  publishedAt   DateTime?
+  lastUpdatedAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  versionDownloads VersionDownload[]
+  versionAnalytics VersionAnalytics[]
+  transactions     Transaction[]
+  user             User?              @relation(fields: [userId], references: [id])
+  userId           Int?
+
+  @@index([developerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([isFree])
+  @@index([contentType])
+  @@index([downloadCount])
+  @@index([averageRating])
+  @@index([publishedAt])
+  @@index([createdAt])
+}
+
+model AppVersion {
+  id          Int     @id @default(autoincrement())
+  version     String // e.g., "1.0.0", "v2.1"
+  versionCode String? // Internal version code for mobile apps (e.g., "45")
+  appId       Int
+  app         App     @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // Release Information
+  releaseName String? // e.g., "Stable Release", "Beta v2"
+  releaseType ReleaseType @default(STABLE)
+
+  // Detailed Changelog
+  changelog       String? // Markdown/HTML changelog
+  newFeatures     Json? // Array of new features
+  improvements    Json? // Array of improvements
+  bugFixes        Json? // Array of bug fixes
+  breakingChanges Json? // Array of breaking changes
+  knownIssues     Json? // Array of known issues
+
+  // Version Metadata
+  minOsVersion  String? // Minimum OS version required
+  supportedOs   Platform[] // Specific OS versions for this release
+  dependencies  Json? // Required dependencies/libraries
+  compatibility Compatibility[] // Compatibility notes
+
+  // Distribution
+  downloadUrl   String // S3/Cloud Storage URL
+  mirrorUrl     String? // Alternative download URL
+  fileSize      String // Human readable: "2.5 GB", "50 MB"
+  fileSizeBytes BigInt? // Exact size in bytes
+  checksum      String? // SHA256 for integrity check
+  checksumType  ChecksumType @default(SHA256)
+
+  // Version Flags
+  isStable       Boolean      @default(true)
+  isPrerelease   Boolean      @default(false)
+  isBeta         Boolean      @default(false)
+  isAlpha        Boolean      @default(false)
+  isRollback     Boolean      @default(false) // If this is a rollback version
+  rollbackFromId Int? // Reference to version being rolled back from
+  rollbackFrom   AppVersion?  @relation("RollbackVersions", fields: [rollbackFromId], references: [id])
+  rollbackTo     AppVersion[] @relation("RollbackVersions")
+
+  // Version Dependencies
+  requiresUpdate    Boolean      @default(false) // If this is a mandatory update
+  minAppVersion     String? // Minimum app version required before update
+  previousVersionId Int? // Reference to previous version
+  previousVersion   AppVersion?  @relation("VersionHistory", fields: [previousVersionId], references: [id])
+  nextVersion       AppVersion[] @relation("VersionHistory")
+
+  // Security
+  securityUpdates    Json? // Array of security patches in this version
+  vulnerabilityFixed Boolean @default(false)
+
+  // Stats
+  downloadCount Int @default(0)
+  installCount  Int @default(0) // Successful installations
+  updateCount   Int @default(0) // Updates from previous versions
+  crashReports  Int @default(0)
+
+  // Approval & Moderation
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedAt      DateTime?
+  moderatorNotes   String?
+  approvedBy       Int? // Admin/Moderator who approved
+  approver         User?            @relation(fields: [approvedBy], references: [id])
+
+  // Timestamps
+  releaseDate       DateTime           @default(now())
+  buildDate         DateTime? // When the build was compiled
+  supportEndDate    DateTime? // When support ends for this version
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  versionChangeLogs VersionChangeLog[]
+  versionDownloads  VersionDownload[]
+  versionAnalytics  VersionAnalytics?
+  downloads         Download[]
+
+  @@unique([appId, version])
+  @@unique([appId, versionCode])
+  @@index([appId])
+  @@index([releaseType])
+  @@index([isStable])
+  @@index([releaseDate])
+  @@index([moderationStatus])
+  @@index([requiresUpdate])
+}
+
+model VersionChangeLog {
+  id        Int        @id @default(autoincrement())
+  versionId Int
+  version   AppVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  // Change Details
+  changeType     ChangeType // FEATURE, BUG_FIX, IMPROVEMENT, SECURITY, DEPRECATION
+  title          String
+  description    String
+  details        String? // Markdown details
+  component      String? // Which component/module changed
+  priority       PriorityLevel @default(MEDIUM)
+  issueTrackerId String? // Link to issue tracker (e.g., "GH-123")
+
+  // Affected Areas
+  affectedPlatforms Platform[] // Which platforms this change affects
+  breakingChange    Boolean    @default(false)
+  requiresMigration Boolean    @default(false)
+  migrationGuide    String? // Markdown migration guide
+
+  // Metadata
+  commitHash    String? // Git commit hash
+  pullRequestId String? // GitHub/GitLab PR ID
+  authorId      Int? // Developer who made the change
+  author        User?   @relation(fields: [authorId], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([versionId])
+  @@index([changeType])
+  @@index([priority])
+  @@index([breakingChange])
+}
+
+model VersionDownload {
+  id        Int        @id @default(autoincrement())
+  versionId Int
+  version   AppVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  appId     Int
+  app       App        @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // Download Context
+  downloadType DownloadType @default(DIRECT)
+  fromVersion  String? // Previous version user had (if updating)
+  toVersion    String // Version being downloaded
+  ipAddress    String?
+  userAgent    String?
+  countryCode  String?
+  referrer     String? // Where they came from
+
+  // Download Details
+  bytesDownloaded BigInt  @default(0)
+  downloadSpeed   Float? // MB/s
+  isResumed       Boolean @default(false)
+  resumeCount     Int     @default(0)
+
+  // Completion Status
+  completedAt   DateTime?
+  failedAt      DateTime?
+  failureReason String?
+
+  // Timestamps
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([versionId])
+  @@index([userId])
+  @@index([appId])
+  @@index([downloadType])
+  @@index([startedAt])
+  @@index([countryCode])
+}
+
+model VersionAnalytics {
+  id        Int        @id @default(autoincrement())
+  versionId Int        @unique
+  version   AppVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  appId     Int
+  app       App        @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // Daily/Monthly aggregated data
+  date   DateTime // Date of aggregation
+  period AnalyticsPeriod @default(DAILY)
+
+  // Download Metrics
+  totalDownloads  Int @default(0)
+  uniqueDownloads Int @default(0) // Unique users
+  updateDownloads Int @default(0) // Downloads for updates
+  newDownloads    Int @default(0) // New installations
+
+  // Geographic Distribution
+  downloadsByCountry Json? // Map of countryCode -> count
+
+  // Platform Distribution
+  downloadsByPlatform Json? // Map of platform -> count
+
+  // Success/Failure Rates
+  successfulDownloads Int    @default(0)
+  failedDownloads     Int    @default(0)
+  avgDownloadTime     Float? // Average time in seconds
+
+  // Retention
+  retention1Day  Float? // % still using after 1 day
+  retention7Day  Float? // % still using after 7 days
+  retention30Day Float? // % still using after 30 days
+
+  // Crash/Error Reports
+  crashReports Int @default(0)
+  errorReports Int @default(0)
+
+  // Timestamps
+  calculatedAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([versionId, date, period])
+  @@index([versionId])
+  @@index([appId])
+  @@index([date])
+}
+
+// Enums for version management
+enum ReleaseType {
+  STABLE
+  BETA
+  ALPHA
+  RELEASE_CANDIDATE
+  NIGHTLY
+  DEVELOPMENT
+}
+
+enum ChangeType {
+  FEATURE
+  BUG_FIX
+  SECURITY
+  PERFORMANCE
+  UI_UX
+  REFACTOR
+  DEPRECATION
+  DOCUMENTATION
+  TRANSLATION
+  ACCESSIBILITY
+  COMPATIBILITY
+  OTHER
+}
+
+enum PriorityLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  TRIVIAL
+}
+
+enum DownloadType {
+  DIRECT
+  UPDATE
+  ADMIN
+  API
+  MIRROR
+  EXTERNAL
+}
+
+enum AnalyticsPeriod {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ChecksumType {
+  MD5
+  SHA1
+  SHA256
+  SHA512
+}
+
+enum Compatibility {
+  BACKWARD_COMPATIBLE
+  FORWARD_COMPATIBLE
+  BREAKING_CHANGE
+  DATA_MIGRATION_REQUIRED
+  CONFIG_MIGRATION_REQUIRED
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  iconUrl     String?
+  parentId    Int? // For nested categories
+  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToCategory")
+  apps        App[]
+  order       Int        @default(0)
+  isActive    Boolean    @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([parentId])
+  @@index([order])
+}
+
+model Tag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String? // For UI display
+  isFeatured  Boolean  @default(false)
+  apps        AppTag[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isFeatured])
+}
+
+model AppTag {
+  id        Int      @id @default(autoincrement())
+  appId     Int
+  tagId     Int
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([appId, tagId])
+  @@index([appId])
+  @@index([tagId])
+}
+
+model Review {
+  id      Int     @id @default(autoincrement())
+  rating  Int // 1-5
+  title   String?
+  comment String?
+  userId  Int
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appId   Int
+  app     App     @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // Metadata
+  isVerifiedPurchase Boolean   @default(false)
+  helpfulCount       Int       @default(0)
+  reportedCount      Int       @default(0)
+  isEdited           Boolean   @default(false)
+  editedAt           DateTime?
+
+  // Moderation
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedAt      DateTime?
+  moderatorNotes   String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appId, userId])
+  @@index([appId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+  @@index([moderationStatus])
+}
+
+model Download {
+  id             Int        @id @default(autoincrement())
+  userId         Int
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appId          Int
+  app            App        @relation(fields: [appId], references: [id], onDelete: Cascade)
+  versionId      Int
+  version        AppVersion @relation(fields: [versionId], references: [id])
+  ipAddress      String?
+  userAgent      String?
+  downloadMethod String? // "direct", "api", "admin"
+
+  // Timestamps
+  downloadedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([appId])
+  @@index([versionId])
+  @@index([downloadedAt])
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appId     Int
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, appId])
+  @@index([userId])
+  @@index([appId])
+  @@index([createdAt])
+}
+
+model Report {
+  id          Int     @id @default(autoincrement())
+  type        String // "app", "review", "user"
+  targetId    Int // ID of reported item (appId, reviewId, userId)
+  reason      String
+  description String?
+
+  // Reporter (user who submitted the report)
+  reporterId Int
+  reporter   User @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // Moderation
+  status         ModerationStatus @default(PENDING)
+  moderatorId    Int?
+  moderator      User?            @relation("ModeratedReports", fields: [moderatorId], references: [id])
+  moderatorNotes String?
+
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  // App relation (only for app reports)
+  app    App?  @relation(fields: [appId], references: [id])
+  appId  Int?
+  user   User? @relation(fields: [userId], references: [id])
+  userId Int?
+
+  @@index([reporterId])
+  @@index([type, targetId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ModerationLog {
+  id          Int     @id @default(autoincrement())
+  action      String // "approve", "reject", "suspend", "feature", "unfeature"
+  entityType  String // "app", "review", "user", "developer"
+  entityId    Int
+  moderatorId Int
+  moderator   User    @relation(fields: [moderatorId], references: [id])
+  reason      String?
+  notes       String?
+  changes     Json? // JSON diff of changes made
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Optional app relation
+  app   App? @relation(fields: [appId], references: [id])
+  appId Int?
+
+  @@index([entityType, entityId])
+  @@index([moderatorId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model Transaction {
+  id     Int    @id @default(autoincrement())
+  type   String // "purchase", "refund", "withdrawal", "commission"
+  amount Float
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appId  Int?
+  app    App?   @relation(fields: [appId], references: [id])
+
+  // Payment details
+  paymentMethod String? // "stripe", "paypal", "wallet"
+  paymentId     String? // External payment ID
+  currency      String  @default("USD")
+
+  // Status
+  status String @default("pending") // "pending", "completed", "failed", "refunded"
+
+  // Metadata
+  description String?
+  metadata    Json?
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([appId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  tokenHash String   @unique
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
   userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   revokedAt DateTime?
+
+  // Device info
+  userAgent String?
+  ipAddress String?
+
+  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([expiresAt])
 }
