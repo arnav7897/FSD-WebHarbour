@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, refresh, me } = require('../controllers/auth.controller');
+const { register, login, becomeDeveloper, refresh, me } = require('../controllers/auth.controller');
 const auth = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -53,6 +53,24 @@ router.post('/register', register);
  *         description: Login successful
  */
 router.post('/login', login);
+
+/**
+ * @openapi
+ * /auth/become-developer:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Upgrade current user role to DEVELOPER
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Role updated and new tokens issued
+ *       401:
+ *         description: Missing or invalid token
+ *       404:
+ *         description: User not found
+ */
+router.post('/become-developer', auth, becomeDeveloper);
 
 /**
  * @openapi

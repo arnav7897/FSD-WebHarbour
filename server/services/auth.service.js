@@ -75,6 +75,32 @@ const loginUser = async ({ email, password }) => {
   return { ...tokens, user: sanitizeUser(user) };
 };
 
+const becomeDeveloper = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+
+  let updatedUser = user;
+  if (user.role === 'USER') {
+    updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { role: 'DEVELOPER' },
+    });
+  }
+
+  await prisma.developerProfile.upsert({
+    where: { userId },
+    update: {},
+    create: { userId },
+  });
+
+  const tokens = await issueTokens(updatedUser);
+  return { ...tokens, user: sanitizeUser(updatedUser) };
+};
+
 const refreshAccessToken = async (refreshToken) => {
   const tokenHash = hashToken(refreshToken);
   const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
@@ -102,6 +128,7 @@ const getUserById = (id) => prisma.user.findUnique({ where: { id } });
 module.exports = {
   registerUser,
   loginUser,
+  becomeDeveloper,
   refreshAccessToken,
   getUserById,
   JWT_EXPIRES_IN,

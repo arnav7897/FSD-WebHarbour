@@ -1,6 +1,7 @@
 const {
   registerUser,
   loginUser,
+  becomeDeveloper,
   refreshAccessToken,
   getUserById,
   JWT_EXPIRES_IN,
@@ -57,6 +58,21 @@ const refresh = async (req, res, next) => {
   }
 };
 
+const becomeDeveloperHandler = async (req, res, next) => {
+  try {
+    const { token, refreshToken, user } = await becomeDeveloper(req.user.id);
+    return res.json({
+      token,
+      tokenType: 'Bearer',
+      expiresIn: JWT_EXPIRES_IN,
+      refreshToken,
+      user,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 const me = async (req, res, next) => {
   try {
     const user = await getUserById(req.user.id);
@@ -77,6 +93,7 @@ const me = async (req, res, next) => {
 module.exports = {
   register,
   login,
+  becomeDeveloper: becomeDeveloperHandler,
   refresh,
   me,
 };

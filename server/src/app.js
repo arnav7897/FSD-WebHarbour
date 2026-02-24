@@ -8,6 +8,8 @@ const { NODE_ENV, PORT } = require('../config/env');
 const { SERVICE_NAME } = require('../config/constants');
 const authRoutes = require('../routes/auth.routes');
 const appRoutes = require('../routes/app.routes');
+const reviewRoutes = require('../routes/review.routes');
+const catalogRoutes = require('../routes/catalog.routes');
 
 const app = express();
 
@@ -78,6 +80,8 @@ app.get('/openapi.json', (req, res) => {
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/auth', authRoutes);
 app.use('/apps', appRoutes);
+app.use('/apps', reviewRoutes);
+app.use('/', catalogRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not Found' });
