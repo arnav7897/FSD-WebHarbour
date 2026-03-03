@@ -52,38 +52,40 @@ enum Platform {
 }
 
 model User {
-  id                Int                @id @default(autoincrement())
-  name              String
-  email             String             @unique
-  username          String?            @unique
-  passwordHash      String
-  avatarUrl         String?
-  bio               String?
-  role              Role               @default(USER)
-  isVerified        Boolean            @default(false)
-  emailVerifiedAt   DateTime?
-  refreshTokens     RefreshToken[]
-  apps              App[]
-  reviews           Review[]
-  downloads         Download[]
-  favorites         Favorite[]
-  reportsSubmitted  Report[]           @relation("UserReports") // User submitted reports
+  id                      Int                      @id @default(autoincrement())
+  name                    String
+  email                   String                   @unique
+  username                String?                  @unique
+  passwordHash            String
+  avatarUrl               String?
+  bio                     String?
+  role                    Role                     @default(USER)
+  isVerified              Boolean                  @default(false)
+  emailVerifiedAt         DateTime?
+  refreshTokens           RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  apps                    App[]
+  reviews                 Review[]
+  downloads               Download[]
+  favorites               Favorite[]
+  reportsSubmitted        Report[]                 @relation("UserReports") // User submitted reports
   // Developer-specific fields
-  developerProfile  DeveloperProfile?
+  developerProfile        DeveloperProfile?
   // Transaction fields
-  balance           Float              @default(0.00)
-  transactions      Transaction[]
+  balance                 Float                    @default(0.00)
+  transactions            Transaction[]
   // Version related fields
-  appVersions       AppVersion[] // Versions created by user
-  versionChangeLogs VersionChangeLog[] // Change logs authored by user
-  versionDownloads  VersionDownload[] // Downloads by user
-  moderationLogs    ModerationLog[] // Moderation actions by user
-  reportsModerated  Report[]           @relation("ModeratedReports") // Reports moderated by user
+  appVersions             AppVersion[] // Versions created by user
+  versionChangeLogs       VersionChangeLog[] // Change logs authored by user
+  versionDownloads        VersionDownload[] // Downloads by user
+  moderationLogs          ModerationLog[] // Moderation actions by user
+  reportsModerated        Report[]                 @relation("ModeratedReports") // Reports moderated by user
   // Timestamps
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  lastLoginAt       DateTime?
-  reports           Report[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  lastLoginAt             DateTime?
+  reports                 Report[]
 
   @@index([email])
   @@index([role])
@@ -688,6 +690,34 @@ model RefreshToken {
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([userId])
   @@index([expiresAt])

@@ -1,3 +1,5 @@
+const { createHttpError } = require('./error.middleware');
+
 const ROLE_PERMISSIONS = {
   USER: ['USER'],
   DEVELOPER: ['USER', 'DEVELOPER'],
@@ -11,7 +13,7 @@ const requireRole = (...roles) => (req, res, next) => {
   const isAllowed = roles.some((requiredRole) => permissions.includes(requiredRole));
 
   if (!req.user || !isAllowed) {
-    return res.status(403).json({ message: 'Forbidden' });
+    return next(createHttpError(403, 'Forbidden', 'FORBIDDEN'));
   }
   return next();
 };

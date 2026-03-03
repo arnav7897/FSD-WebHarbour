@@ -298,23 +298,11 @@ const publishApp = async ({ appId, userId }) => {
   const parsedId = parseInteger(appId);
   if (!parsedId) throw makeHttpError('Invalid app id', 400);
 
-  const ownedApp = await assertOwnership(parsedId, userId);
-
-  if (ownedApp.status === 'PUBLISHED') {
-    throw makeHttpError('App is already published', 409);
-  }
-
-  const published = await prisma.app.update({
-    where: { id: parsedId },
-    data: {
-      status: 'PUBLISHED',
-      publishedAt: new Date(),
-      lastUpdatedAt: new Date(),
-    },
-    include: appInclude,
-  });
-
-  return mapAppResult(published);
+  await assertOwnership(parsedId, userId);
+  throw makeHttpError(
+    'Direct publish is disabled. Submit app for review using /apps/:id/submit',
+    409,
+  );
 };
 
 const createAppVersion = async ({ appId, userId, body }) => {

@@ -1,154 +1,217 @@
 # WebHarbour Server API Guide
 
 ## Overview
-This backend exposes REST APIs for authentication, app publishing, category/tag management, and reviews.
+This backend provides REST APIs for authentication, app publishing workflow, moderation, trust/safety, tracking, and analytics.
 
 Base URL (local): `http://localhost:4000`  
 Swagger UI: `http://localhost:4000/docs`  
 OpenAPI JSON: `http://localhost:4000/openapi.json`
 
 ## Run Locally
-1. Install dependencies:
+1. Install dependencies
 ```bash
 cd server
 npm install
 ```
-2. Generate Prisma client:
+2. Run DB migrations + Prisma client
 ```bash
+npx prisma migrate dev
 npx prisma generate
 ```
-3. Run API:
+3. Seed baseline admin/categories/tags
+```bash
+npm run seed
+```
+4. Start API
 ```bash
 npm run dev
 ```
+5. Run tests
+```bash
+npm test
+```
 
 ## Environment Variables
-- `PORT` default `4000`
-- `NODE_ENV` default `development`
-- `JWT_SECRET` required for auth
-- `JWT_EXPIRES_IN` default `1d`
-- `REFRESH_TOKEN_EXPIRES_IN` default `7d`
-- `DATABASE_URL` (or `DB_URI`) PostgreSQL connection URL
+- `PORT` (default: `4000`)
+- `NODE_ENV` (default: `development`)
+- `DATABASE_URL` (PostgreSQL connection string)
+- `JWT_SECRET` (required)
+- `JWT_EXPIRES_IN` (default: `1d`)
+- `REFRESH_TOKEN_EXPIRES_IN` (default: `7d`)
+- `EMAIL_VERIFICATION_TOKEN_EXPIRES_IN` (default: `1d`)
+- `PASSWORD_RESET_TOKEN_EXPIRES_IN` (default: `15m`)
+- `AUTH_REQUIRE_EMAIL_VERIFIED` (default: `true`)
+- `AUTH_EXPOSE_DEBUG_TOKENS` (default: `true` in non-production)
+- `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (optional seed config)
 
 ## Auth and Role Model
-- New users register with role `USER`.
+- New users register as `USER`.
 - `POST /auth/become-developer` upgrades logged-in user to `DEVELOPER`.
-- `ADMIN` role should be assigned via DB/admin process.
-- Role inheritance in middleware:
-- `DEVELOPER` can access `USER` endpoints.
-- `ADMIN` can access `USER`, `DEVELOPER`, and admin-protected endpoints.
+- `ADMIN` can be seeded/managed at DB level.
+- Role inheritance:
+  - `DEVELOPER` can access `USER` endpoints
+  - `ADMIN` can access `USER`, `DEVELOPER`, `MODERATOR`, and admin endpoints
 
-## Error Format
-Most errors return:
+## Standard Error Response
+All errors are standardized:
+
 ```json
 {
-  "message": "Error description"
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "Validation error",
+    "status": 400
+  }
 }
 ```
+
 Common status codes:
-- `400` invalid input
-- `401` unauthenticated or invalid token
-- `403` forbidden (insufficient role or not owner)
+- `400` bad request / validation
+- `401` unauthorized / invalid token
+- `403` forbidden (role/ownership)
 - `404` resource not found
-- `409` unique conflict / duplicate action
+- `409` conflict (invalid transition, duplicate action)
 
 ## API Summary
 
 ### Health
-| Method | Endpoint | Auth | Purpose | Where Used |
+| Method | Endpoint | Auth | Purpose | Where to Use |
 |---|---|---|---|---|
-| `GET` | `/health` | No | Service heartbeat | Monitoring, uptime checks |
+| `GET` | `/health` | No | Service heartbeat | Monitoring, deployment checks |
 
 ### Authentication
-| Method | Endpoint | Auth | Purpose | Where Used |
+| Method | Endpoint | Auth | Purpose | Where to Use |
 |---|---|---|---|---|
-| `POST` | `/auth/register` | No | Create user account | Signup page |
-| `POST` | `/auth/login` | No | Issue access + refresh tokens | Login page |
+| `POST` | `/auth/register` | No | Create account and initiate email verification | Signup flow |
+| `POST` | `/auth/login` | No | Login and issue access + refresh tokens | Login flow |
+| `POST` | `/auth/verify-email/request` | No | Request verification token | Resend verification |
+| `POST` | `/auth/verify-email/confirm` | No | Verify account email | Verification screen/link |
+| `POST` | `/auth/password-reset/request` | No | Request password reset token | Forgot password |
+| `POST` | `/auth/password-reset/confirm` | No | Reset password using token | Reset password form |
 | `POST` | `/auth/refresh` | No (refresh token in body) | Rotate tokens | Silent session renewal |
-| `POST` | `/auth/become-developer` | Bearer token | Upgrade current user to `DEVELOPER` and re-issue tokens | Developer onboarding |
-| `GET` | `/auth/me` | Bearer token | Return current user profile | Session/profile checks |
+| `POST` | `/auth/logout` | No (refresh token in body) | Revoke current refresh token | Logout current device |
+| `POST` | `/auth/logout-all` | Bearer | Revoke all refresh tokens for current user | Security/settings screen |
+| `POST` | `/auth/become-developer` | Bearer | Upgrade role to `DEVELOPER` | Developer onboarding |
+| `GET` | `/auth/me` | Bearer | Current user profile/session | App bootstrap, profile |
 
-### Categories and Tags
-| Method | Endpoint | Auth | Purpose | Where Used |
+### Catalog (Categories and Tags)
+| Method | Endpoint | Auth | Purpose | Where to Use |
 |---|---|---|---|---|
-| `GET` | `/categories` | No | List active primary classifications | App create/edit forms, filters |
-| `POST` | `/categories` | Bearer token (`ADMIN`) | Create category | Admin catalog management |
-| `GET` | `/tags` | No | List secondary discovery labels | App create/edit forms, filters |
-| `POST` | `/tags` | Bearer token (`ADMIN`) | Create tag | Admin catalog management |
+| `GET` | `/categories` | No | List primary app categories | App forms, filter sidebar |
+| `POST` | `/categories` | Bearer (`ADMIN`) | Create category | Admin catalog panel |
+| `GET` | `/tags` | No | List secondary labels | App forms, search filters |
+| `POST` | `/tags` | Bearer (`ADMIN`) | Create tag | Admin catalog panel |
 
 ### Apps and Versions
-| Method | Endpoint | Auth | Purpose | Where Used |
+| Method | Endpoint | Auth | Purpose | Where to Use |
 |---|---|---|---|---|
-| `POST` | `/apps` | Bearer token (`DEVELOPER`) | Create app as `DRAFT` | Developer publishing flow |
-| `GET` | `/apps` | No | Paginated listing with filters | Marketplace browse/search |
-| `GET` | `/apps/:id` | No | Get app details | App detail page |
-| `PATCH` | `/apps/:id` | Bearer token (`DEVELOPER`, owner) | Update app metadata | Developer app management |
-| `POST` | `/apps/:id/publish` | Bearer token (`DEVELOPER`, owner) | Publish app | Developer release flow |
-| `POST` | `/apps/:id/versions` | Bearer token (`DEVELOPER`, owner) | Add version entry | Version release management |
-| `GET` | `/apps/:id/versions` | No | List all app versions | App detail and update history |
+| `POST` | `/apps` | Bearer (`DEVELOPER`) | Create app in `DRAFT` | Developer dashboard |
+| `GET` | `/apps` | No | List apps with filters/pagination | Marketplace listing |
+| `GET` | `/apps/:id` | No | App detail by id | App detail page |
+| `PATCH` | `/apps/:id` | Bearer (`DEVELOPER`, owner) | Update app metadata | Developer edit screen |
+| `POST` | `/apps/:id/submit` | Bearer (`DEVELOPER`, owner) | Submit `DRAFT` app for moderation (`UNDER_REVIEW`) | Developer publishing workflow |
+| `POST` | `/apps/:id/publish` | Bearer (`DEVELOPER`, owner) | Deprecated direct publish endpoint (returns conflict) | Legacy only; do not use |
+| `POST` | `/apps/:id/versions` | Bearer (`DEVELOPER`, owner) | Create app version | Release management |
+| `GET` | `/apps/:id/versions` | No | List app versions | Version history UI |
+
+### Tracking and Favorites
+| Method | Endpoint | Auth | Purpose | Where to Use |
+|---|---|---|---|---|
+| `POST` | `/apps/:id/download` | Bearer (`USER+`) | Create download/install record and increment counters | Download/install action |
+| `POST` | `/apps/:id/favorite` | Bearer (`USER+`) | Add app to favorites (`409` on duplicate) | Favorite button |
+| `DELETE` | `/apps/:id/favorite` | Bearer (`USER+`) | Remove favorite (idempotent) | Unfavorite button |
+| `GET` | `/users/me/favorites` | Bearer (`USER+`) | List current user favorites | Saved/Favorites page |
 
 ### Reviews
-| Method | Endpoint | Auth | Purpose | Where Used |
+| Method | Endpoint | Auth | Purpose | Where to Use |
 |---|---|---|---|---|
-| `POST` | `/apps/:appId/reviews` | Bearer token (`USER+`) | Create one review per user per app | User feedback flow |
-| `GET` | `/apps/:appId/reviews` | No | List reviews for app | App detail page |
-| `PATCH` | `/apps/:appId/reviews/:reviewId` | Bearer token (`USER+`, owner) | Update own review | User feedback management |
-| `DELETE` | `/apps/:appId/reviews/:reviewId` | Bearer token (`USER+` owner or `ADMIN`) | Delete review | User/admin moderation |
+| `POST` | `/apps/:appId/reviews` | Bearer (`USER+`) | Create review (one per user per app) | App feedback form |
+| `GET` | `/apps/:appId/reviews` | No | List app reviews | App detail review section |
+| `PATCH` | `/apps/:appId/reviews/:reviewId` | Bearer (`USER+`, owner) | Update own review | Review management |
+| `DELETE` | `/apps/:appId/reviews/:reviewId` | Bearer (`USER+` owner / `ADMIN`) | Delete review | User self-delete / admin moderation |
 
-## Key Request Payloads
+### Reporting and Trust/Safety
+| Method | Endpoint | Auth | Purpose | Where to Use |
+|---|---|---|---|---|
+| `POST` | `/reports` | Bearer (`USER+`) | Report `APP`/`REVIEW`/`USER` with reason + description | Report abuse flow |
+| `GET` | `/admin/reports` | Bearer (`ADMIN`) | List reports with filters (`status`, `type`, date range, pagination) | Admin trust/safety queue |
+| `PATCH` | `/admin/reports/:id/resolve` | Bearer (`ADMIN`) | Resolve pending report with decision + notes | Admin report actions |
 
-### Register
+### Moderation and Lifecycle (Admin)
+| Method | Endpoint | Auth | Purpose | Where to Use |
+|---|---|---|---|---|
+| `PATCH` | `/admin/apps/:id/approve` | Bearer (`ADMIN`) | `UNDER_REVIEW` -> `PUBLISHED` | Admin moderation panel |
+| `PATCH` | `/admin/apps/:id/reject` | Bearer (`ADMIN`) | `UNDER_REVIEW` -> `REJECTED` (note required) | Admin moderation panel |
+| `PATCH` | `/admin/apps/:id/suspend` | Bearer (`ADMIN`) | `PUBLISHED` -> `SUSPENDED` (reason required) | Admin moderation panel |
+| `PATCH` | `/admin/apps/:id/unsuspend` | Bearer (`ADMIN`) | `SUSPENDED` -> `PUBLISHED` | Admin moderation panel |
+
+### Developer Analytics
+| Method | Endpoint | Auth | Purpose | Where to Use |
+|---|---|---|---|---|
+| `GET` | `/developer/analytics/overview` | Bearer (`DEVELOPER`) | Aggregate metrics across developer apps | Developer dashboard summary cards |
+| `GET` | `/developer/analytics/apps/:id` | Bearer (`DEVELOPER`, owner) | Per-app metrics + version trends | Developer app analytics screen |
+
+## Key Payload Examples
+
+### Report Creation
 ```json
 {
-  "name": "Arnav",
-  "email": "arnav@example.com",
-  "password": "StrongPass123"
+  "type": "APP",
+  "targetId": 42,
+  "reason": "Suspicious behavior",
+  "description": "Unexpected network calls during startup"
 }
 ```
 
-### Create Category (Admin)
+### Resolve Report (Admin)
 ```json
 {
-  "name": "Productivity",
-  "description": "Task and workflow apps",
-  "order": 1,
-  "isActive": true
+  "decision": "APPROVED",
+  "notes": "Confirmed violation and action logged"
 }
 ```
 
-### Create App (Developer)
+### Submit App for Review
+```json
+{}
+```
+
+### Suspend App (Admin)
 ```json
 {
-  "name": "Notion Theme Pack",
-  "description": "Theme presets for productivity dashboards",
-  "categoryId": 2,
-  "tags": [3, 5]
+  "reason": "Malware signature detected"
 }
 ```
 
-### Add App Version (Developer Owner)
+### Add Version
 ```json
 {
   "version": "1.0.1",
-  "changelog": "Improved performance and fixed dark mode issues",
-  "downloadUrl": "https://cdn.example.com/apps/notion-theme-pack-1.0.1.zip",
+  "changelog": "Performance improvements",
+  "downloadUrl": "https://cdn.example.com/apps/app-v1.0.1.zip",
   "fileSize": "52 MB",
   "supportedOs": ["WEB", "WINDOWS", "MACOS"]
 }
 ```
 
-### Create Review (User)
-```json
-{
-  "rating": 5,
-  "title": "Great app",
-  "comment": "Very useful and stable."
-}
-```
+## Typical End-to-End Flows
 
-## Typical Flow (End User + Developer)
-1. User registers and logs in.
-2. User upgrades to developer using `/auth/become-developer`.
-3. Admin creates categories/tags.
-4. Developer creates app (`DRAFT`), updates details, publishes app, and adds versions.
-5. Users browse apps and submit reviews.
+### User Flow
+1. Register -> verify email -> login.
+2. Browse app list and app detail.
+3. Download app, add/remove favorites.
+4. Add/update/delete review.
+5. Report suspicious app/review/user if needed.
+
+### Developer Flow
+1. Register -> verify -> login -> become developer.
+2. Create app (`DRAFT`) and add versions.
+3. Submit app for review.
+4. Track performance in analytics overview and per-app trends.
+
+### Admin Flow
+1. Login as admin.
+2. Moderate apps (approve/reject/suspend/unsuspend).
+3. Manage categories/tags.
+4. Review reports and resolve trust/safety cases.

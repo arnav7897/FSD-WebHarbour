@@ -10,6 +10,11 @@ const authRoutes = require('../routes/auth.routes');
 const appRoutes = require('../routes/app.routes');
 const reviewRoutes = require('../routes/review.routes');
 const catalogRoutes = require('../routes/catalog.routes');
+const adminRoutes = require('../routes/admin.routes');
+const userRoutes = require('../routes/user.auth');
+const reportRoutes = require('../routes/report.routes');
+const developerRoutes = require('../routes/developer.routes');
+const { notFoundHandler, errorHandler } = require('../middleware/error.middleware');
 
 const app = express();
 
@@ -42,12 +47,89 @@ const swaggerSpec = swaggerJSDoc({
           bearerFormat: 'JWT',
         },
       },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
+            error: {
+              type: 'object',
+              properties: {
+                code: {
+                  type: 'string',
+                  example: 'BAD_REQUEST',
+                },
+                message: {
+                  type: 'string',
+                  example: 'Validation error',
+                },
+                status: {
+                  type: 'integer',
+                  example: 400,
+                },
+                details: {
+                  oneOf: [{ type: 'object' }, { type: 'array' }, { type: 'string' }],
+                },
+              },
+              required: ['code', 'message', 'status'],
+            },
+          },
+          required: ['success', 'error'],
+        },
+      },
+      responses: {
+        BadRequest: {
+          description: 'Bad request',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        Unauthorized: {
+          description: 'Unauthorized',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        Forbidden: {
+          description: 'Forbidden',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        NotFound: {
+          description: 'Not found',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        Conflict: {
+          description: 'Conflict',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+      },
     },
     tags: [
       { name: 'Health' },
       { name: 'Auth' },
       { name: 'Apps' },
       { name: 'Reviews' },
+      { name: 'Reports' },
+      { name: 'Users' },
       { name: 'Developer' },
       { name: 'Admin' },
     ],
@@ -81,18 +163,13 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/auth', authRoutes);
 app.use('/apps', appRoutes);
 app.use('/apps', reviewRoutes);
+app.use('/reports', reportRoutes);
+app.use('/admin', adminRoutes);
+app.use('/users', userRoutes);
+app.use('/developer', developerRoutes);
 app.use('/', catalogRoutes);
 
-app.use((req, res) => {
-  res.status(404).json({ message: 'Not Found' });
-});
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  const status = err.status || 500;
-  res.status(status).json({
-    message: err.message || 'Internal Server Error',
-  });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;

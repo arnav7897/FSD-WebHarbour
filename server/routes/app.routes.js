@@ -7,8 +7,12 @@ const {
   getAppByIdHandler,
   updateAppHandler,
   publishAppHandler,
+  submitAppHandler,
   createAppVersionHandler,
   listAppVersionsHandler,
+  downloadAppHandler,
+  addFavoriteHandler,
+  removeFavoriteHandler,
 } = require('../controllers/app.controller');
 
 const router = express.Router();
@@ -193,11 +197,11 @@ router.patch('/:id', auth, requireRole('DEVELOPER'), updateAppHandler);
 
 /**
  * @openapi
- * /apps/{id}/publish:
+ * /apps/{id}/submit:
  *   post:
  *     tags: [Apps]
- *     summary: Publish an owned app
- *     description: Moves app status from DRAFT/other states to PUBLISHED for public visibility.
+ *     summary: Submit app for moderation
+ *     description: Developer submits owned app for review. Valid transition is DRAFT to UNDER_REVIEW.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -208,7 +212,7 @@ router.patch('/:id', auth, requireRole('DEVELOPER'), updateAppHandler);
  *           type: integer
  *     responses:
  *       200:
- *         description: App published
+ *         description: App submitted for review
  *       400:
  *         description: Validation error
  *       401:
@@ -218,9 +222,140 @@ router.patch('/:id', auth, requireRole('DEVELOPER'), updateAppHandler);
  *       404:
  *         description: App not found
  *       409:
- *         description: Already published
+ *         description: Invalid status transition
+ */
+router.post('/:id/submit', auth, requireRole('DEVELOPER'), submitAppHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/publish:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Deprecated direct publish endpoint
+ *     deprecated: true
+ *     description: Deprecated in Phase 4. Publishing now requires submit and admin approval flow.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Not used
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App not found
+ *       409:
+ *         description: Direct publish disabled
  */
 router.post('/:id/publish', auth, requireRole('DEVELOPER'), publishAppHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/download:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Track app download/install
+ *     description: Creates a download record and increments cached download counters.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               versionId:
+ *                 type: integer
+ *                 description: Optional app version ID. Latest version is used when omitted.
+ *                 example: 12
+ *     responses:
+ *       201:
+ *         description: Download record created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App or version not found
+ */
+router.post('/:id/download', auth, requireRole('USER'), downloadAppHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/favorite:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Add app to favorites
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       201:
+ *         description: Favorite created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App not found
+ *       409:
+ *         description: App already favorited
+ */
+router.post('/:id/favorite', auth, requireRole('USER'), addFavoriteHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/favorite:
+ *   delete:
+ *     tags: [Apps]
+ *     summary: Remove app from favorites
+ *     description: Idempotent delete. Returns success even if app was not previously favorited.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Favorite removed
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App not found
+ */
+router.delete('/:id/favorite', auth, requireRole('USER'), removeFavoriteHandler);
 
 /**
  * @openapi

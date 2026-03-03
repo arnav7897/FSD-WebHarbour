@@ -7,6 +7,12 @@ const {
   createAppVersion,
   listAppVersions,
 } = require('../services/app.service');
+const { submitAppForReview } = require('../services/moderation.service');
+const {
+  createDownloadRecord,
+  addFavorite,
+  removeFavorite,
+} = require('../services/engagement.service');
 
 const createAppHandler = async (req, res, next) => {
   try {
@@ -53,6 +59,15 @@ const publishAppHandler = async (req, res, next) => {
   }
 };
 
+const submitAppHandler = async (req, res, next) => {
+  try {
+    const app = await submitAppForReview({ appId: req.params.id, userId: req.user.id });
+    return res.json(app);
+  } catch (err) {
+    return next(err);
+  }
+};
+
 const createAppVersionHandler = async (req, res, next) => {
   try {
     const version = await createAppVersion({
@@ -75,12 +90,57 @@ const listAppVersionsHandler = async (req, res, next) => {
   }
 };
 
+const downloadAppHandler = async (req, res, next) => {
+  try {
+    const result = await createDownloadRecord({
+      appId: req.params.id,
+      userId: req.user.id,
+      body: req.body,
+      requestMeta: {
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+    return res.status(201).json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const addFavoriteHandler = async (req, res, next) => {
+  try {
+    const result = await addFavorite({
+      appId: req.params.id,
+      userId: req.user.id,
+    });
+    return res.status(201).json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const removeFavoriteHandler = async (req, res, next) => {
+  try {
+    const result = await removeFavorite({
+      appId: req.params.id,
+      userId: req.user.id,
+    });
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   createAppHandler,
   listAppsHandler,
   getAppByIdHandler,
   updateAppHandler,
   publishAppHandler,
+  submitAppHandler,
   createAppVersionHandler,
   listAppVersionsHandler,
+  downloadAppHandler,
+  addFavoriteHandler,
+  removeFavoriteHandler,
 };
