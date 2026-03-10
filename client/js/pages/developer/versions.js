@@ -21,6 +21,10 @@ async function loadVersions() {
 
 versionForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!appId) {
+    ui.toast("Missing app id in URL", "error");
+    return;
+  }
   const formData = new FormData(versionForm);
   const file = formData.get("apk");
   const payload = {
@@ -68,6 +72,17 @@ function escapeHtml(text) {
 
 (async () => {
   if (window.__roleDenied) return;
-  if (!appId) return ui.toast("Missing app id", "error");
+  if (!appId) {
+    const fallbackId = sessionStorage.getItem("lastAppId");
+    if (fallbackId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", fallbackId);
+      window.location.replace(url.toString());
+      return;
+    }
+    ui.renderEmpty(versionList, "Missing app id in URL. Open this page from the Developer Dashboard.");
+    Array.from(versionForm.elements).forEach(el => { el.disabled = true; });
+    return ui.toast("Missing app id", "error");
+  }
   try { await loadVersions(); } catch (err) { ui.toast(err.message || "Load failed", "error"); }
 })();

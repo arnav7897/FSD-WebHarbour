@@ -28,7 +28,7 @@ const createAppHandler = async (req, res, next) => {
 
 const listAppsHandler = async (req, res, next) => {
   try {
-    const result = await listApps(req.query);
+    const result = await listApps(req.query, req.user);
     return res.json(result);
   } catch (err) {
     return next(err);

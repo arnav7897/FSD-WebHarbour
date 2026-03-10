@@ -4,10 +4,25 @@ const appsGrid = document.getElementById("appsGrid");
 const becomeDevBtn = document.getElementById("becomeDev");
 const refreshDevBtn = document.getElementById("refreshDev");
 const devStatusText = document.getElementById("devStatusText");
+let categoriesCache = [];
 
 async function loadCategories() {
   const categories = await api.get("/categories");
+  categoriesCache = Array.isArray(categories) ? categories : [];
   categorySelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+}
+
+function renderCategoryOptions(selectedId) {
+  if (!categoriesCache.length) return `<option value="">No categories</option>`;
+  return categoriesCache.map(cat => {
+    const isSelected = Number(selectedId) === Number(cat.id);
+    return `<option value="${cat.id}"${isSelected ? " selected" : ""}>${escapeHtml(cat.name)}</option>`;
+  }).join("");
+}
+
+function renderTagsValue(tags) {
+  if (!Array.isArray(tags)) return "";
+  return tags.map(tag => tag && tag.id).filter(Boolean).join(",");
 }
 
 async function loadApps() {
@@ -17,6 +32,7 @@ async function loadApps() {
   }
   const status = document.getElementById("statusFilter").value;
   const params = new URLSearchParams();
+  params.set("mine", "true");
   if (status) params.set("status", status);
   params.set("limit", 12);
   const data = await api.get(`/apps?${params.toString()}`);
@@ -28,9 +44,34 @@ async function loadApps() {
       <p>${escapeHtml(app.description || "")}</p>
       <div class="toolbar" style="margin-top: 12px;">
         <span class="badge">${app.status}</span>
-        <a class="button secondary" href="/pages/developer/versions.html?id=${app.id}">Versions</a>
-        <a class="button ghost" href="/pages/developer/analytics.html?id=${app.id}">Analytics</a>
+        <a class="button secondary" data-versions="${app.id}" href="${ui.pageUrl(`pages/developer/versions.html?id=${app.id}`)}">Versions</a>
+        <a class="button ghost" href="${ui.pageUrl(`pages/developer/analytics.html?id=${app.id}`)}">Analytics</a>
         <button class="button" data-submit="${app.id}">Submit</button>
+        <button class="button ghost" data-edit="${app.id}">Edit</button>
+      </div>
+      <div class="edit-form hidden" data-edit-form="${app.id}">
+        <div class="form-row">
+          <label>Name</label>
+          <input class="input" type="text" name="name" value="${escapeHtml(app.name)}" />
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <textarea class="input" name="description">${escapeHtml(app.description || "")}</textarea>
+        </div>
+        <div class="form-row">
+          <label>Category</label>
+          <select class="input" name="categoryId">
+            ${renderCategoryOptions(app.category?.id)}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Tags (comma separated IDs)</label>
+          <input class="input" type="text" name="tags" value="${renderTagsValue(app.tags)}" />
+        </div>
+        <div class="toolbar" style="margin-top: 12px;">
+          <button class="button secondary" data-save="${app.id}">Save</button>
+          <button class="button ghost" data-cancel="${app.id}">Cancel</button>
+        </div>
       </div>
     </div>
   `).join("");
@@ -43,6 +84,57 @@ async function loadApps() {
         loadApps();
       } catch (err) {
         ui.toast(err.message || "Submit failed", "error");
+      }
+    });
+  });
+
+  appsGrid.querySelectorAll("a[data-versions]").forEach(link => {
+    link.addEventListener("click", () => {
+      sessionStorage.setItem("lastAppId", link.dataset.versions);
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.edit}"]`);
+      if (form) form.classList.toggle("hidden");
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-cancel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.cancel}"]`);
+      if (form) form.classList.add("hidden");
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-save]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.save}"]`);
+      if (!form) return;
+      const name = form.querySelector("input[name='name']").value.trim();
+      const description = form.querySelector("textarea[name='description']").value.trim();
+      const categoryId = Number(form.querySelector("select[name='categoryId']").value);
+      const tagsRaw = form.querySelector("input[name='tags']").value;
+      const tags = tagsRaw
+        ? tagsRaw.split(",").map(t => Number(t.trim())).filter(Boolean)
+        : [];
+
+      if (!name || !description || !categoryId) {
+        ui.toast("Name, description, and category are required", "error");
+        return;
+      }
+
+      const payload = { name, description, categoryId, tags };
+      ui.setLoading(btn, true);
+      try {
+        await api.patch(`/apps/${btn.dataset.save}`, payload);
+        ui.toast("App updated", "success");
+        loadApps();
+      } catch (err) {
+        ui.toast(err.message || "Update failed", "error");
+      } finally {
+        ui.setLoading(btn, false);
       }
     });
   });

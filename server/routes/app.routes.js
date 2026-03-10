@@ -1,5 +1,6 @@
 const express = require('express');
 const auth = require('../middleware/auth.middleware');
+const optionalAuth = require('../middleware/optionalAuth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
   createAppHandler,
@@ -124,7 +125,7 @@ router.post('/', auth, requireRole('DEVELOPER'), createAppHandler);
  *       200:
  *         description: Paginated list of apps
  */
-router.get('/', listAppsHandler);
+router.get('/', optionalAuth, listAppsHandler);
 
 /**
  * @openapi

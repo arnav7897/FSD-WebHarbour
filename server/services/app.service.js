@@ -172,9 +172,10 @@ const createApp = async ({ userId, body }) => {
   return mapAppResult(created);
 };
 
-const listApps = async (query = {}) => {
+const listApps = async (query = {}, user = null) => {
   const { skip, limit, page } = parsePagination(query);
   const where = {};
+  const wantsMine = String(query.mine || '').toLowerCase() === 'true';
 
   if (query.q) {
     where.OR = [
@@ -191,13 +192,29 @@ const listApps = async (query = {}) => {
     where.categoryId = parsedCategoryId;
   }
 
+  if (wantsMine) {
+    if (!user) {
+      throw makeHttpError('Authentication required for mine filter', 401);
+    }
+    if (!['DEVELOPER', 'ADMIN'].includes(user.role)) {
+      throw makeHttpError('Only developers can use mine filter', 403);
+    }
+    where.userId = user.id;
+  }
+
   if (query.status) {
     const normalizedStatus = String(query.status).toUpperCase();
-    if (!APP_STATUSES.includes(normalizedStatus)) {
-      throw makeHttpError(`status must be one of: ${APP_STATUSES.join(', ')}`, 400);
+    if (normalizedStatus === 'ALL') {
+      if (!wantsMine) {
+        throw makeHttpError('status=ALL requires mine=true', 400);
+      }
+    } else {
+      if (!APP_STATUSES.includes(normalizedStatus)) {
+        throw makeHttpError(`status must be one of: ${APP_STATUSES.join(', ')}`, 400);
+      }
+      where.status = normalizedStatus;
     }
-    where.status = normalizedStatus;
-  } else {
+  } else if (!wantsMine) {
     where.status = 'PUBLISHED';
   }
 
