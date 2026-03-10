@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catalog - WebHarbour</title>
+  <link rel="stylesheet" href="../../css/main.css" />
+</head>
+<body data-requires-role="ADMIN">
+  <div id="nav"></div>
+  <main class="container">
+    <h2 class="section-title">Catalog Management</h2>
+    <div class="toolbar">
+      <a class="button secondary" href="../admin/moderation.html">Moderation</a>
+      <a class="button secondary" href="../admin/reports.html">Reports</a>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Categories</h3>
+        <form id="categoryForm">
+          <div class="form-row">
+            <label>Name</label>
+            <input class="input" name="name" required />
+          </div>
+          <button class="button" type="submit">Add category</button>
+        </form>
+        <div id="categoryList" style="margin-top: 12px;"></div>
+      </div>
+      <div class="card">
+        <h3>Tags</h3>
+        <form id="tagForm">
+          <div class="form-row">
+            <label>Name</label>
+            <input class="input" name="name" required />
+          </div>
+          <button class="button" type="submit">Add tag</button>
+        </form>
+        <div id="tagList" style="margin-top: 12px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../js/config.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/ui.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/pages/admin/catalog.js"></script>
+</body>
+</html>
+

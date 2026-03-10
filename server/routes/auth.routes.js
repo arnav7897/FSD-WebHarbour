@@ -7,10 +7,9 @@ const {
   me,
   logout,
   logoutAll,
-  requestEmailVerification,
-  verifyEmail,
   requestPasswordReset,
   resetPassword,
+  developerStatus,
 } = require('../controllers/auth.controller');
 const auth = require('../middleware/auth.middleware');
 
@@ -22,7 +21,7 @@ const router = express.Router();
  *   post:
  *     tags: [Auth]
  *     summary: Register a new user
- *     description: Creates user account and issues an email verification token.
+ *     description: Creates user account.
  *     requestBody:
  *       required: true
  *       content:
@@ -85,82 +84,12 @@ router.post('/register', register);
  *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         description: Invalid credentials
- *       403:
- *         description: Email not verified
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       409:
  *         $ref: '#/components/responses/Conflict'
  */
 router.post('/login', login);
-
-/**
- * @openapi
- * /auth/verify-email/request:
- *   post:
- *     tags: [Auth]
- *     summary: Request new email verification token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email]
- *             properties:
- *               email:
- *                 type: string
- *           example:
- *             email: alice@example.com
- *     responses:
- *       200:
- *         description: Request accepted
- *       400:
- *         description: Validation error
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- */
-router.post('/verify-email/request', requestEmailVerification);
-
-/**
- * @openapi
- * /auth/verify-email/confirm:
- *   post:
- *     tags: [Auth]
- *     summary: Verify email using token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [token]
- *             properties:
- *               token:
- *                 type: string
- *           example:
- *             token: 8b4d2f...verification-token
- *     responses:
- *       200:
- *         description: Email verified
- *       400:
- *         description: Validation error
- *       401:
- *         description: Invalid or expired token
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- *       404:
- *         $ref: '#/components/responses/NotFound'
- *       409:
- *         $ref: '#/components/responses/Conflict'
- */
-router.post('/verify-email/confirm', verifyEmail);
 
 /**
  * @openapi
@@ -238,18 +167,37 @@ router.post('/password-reset/confirm', resetPassword);
  * /auth/become-developer:
  *   post:
  *     tags: [Auth]
- *     summary: Upgrade current user role to DEVELOPER
+ *     summary: Request developer access
+ *     description: Creates a developer access request for admin approval.
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Role updated and new tokens issued
+ *         description: Request recorded
  *       401:
  *         description: Missing or invalid token
  *       404:
  *         description: User not found
  */
 router.post('/become-developer', auth, becomeDeveloper);
+
+/**
+ * @openapi
+ * /auth/developer-status:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get developer request status
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Status returned
+ *       401:
+ *         description: Missing or invalid token
+ *       404:
+ *         description: User not found
+ */
+router.get('/developer-status', auth, developerStatus);
 
 /**
  * @openapi

@@ -57,15 +57,6 @@ const registerUser = async (baseUrl, { name, email, password }) => {
   return res.body;
 };
 
-const verifyEmail = async (baseUrl, token) => {
-  const res = await request(baseUrl, '/auth/verify-email/confirm', {
-    method: 'POST',
-    body: { token },
-  });
-  assert.equal(res.status, 200, JSON.stringify(res.body));
-  return res.body;
-};
-
 const loginUser = async (baseUrl, { email, password }) => {
   const res = await request(baseUrl, '/auth/login', {
     method: 'POST',
@@ -75,48 +66,53 @@ const loginUser = async (baseUrl, { email, password }) => {
   return res.body;
 };
 
-const registerVerifyLogin = async (baseUrl, { name, email, password }) => {
-  const register = await registerUser(baseUrl, { name, email, password });
-  assert.ok(
-    register.verificationToken,
-    'verificationToken missing. Set AUTH_EXPOSE_DEBUG_TOKENS=true for tests.',
-  );
-  await verifyEmail(baseUrl, register.verificationToken);
-  return loginUser(baseUrl, { email, password });
-};
-
 const registerAsDeveloper = async (baseUrl, namePrefix = 'dev') => {
   const email = randomEmail(namePrefix);
   const password = 'Pass@12345';
-  const login = await registerVerifyLogin(baseUrl, {
+  await registerUser(baseUrl, {
     name: `${namePrefix}-user`,
     email,
     password,
   });
+  const login = await loginUser(baseUrl, { email, password });
 
-  const upgraded = await request(baseUrl, '/auth/become-developer', {
+  await request(baseUrl, '/auth/become-developer', {
     method: 'POST',
     token: login.token,
   });
-  assert.equal(upgraded.status, 200, JSON.stringify(upgraded.body));
+
+  const admin = await loginAdmin(baseUrl);
+  await request(baseUrl, `/admin/developers/${login.user.id}/approve`, {
+    method: 'PATCH',
+    token: admin.token,
+  });
+
+  const refreshed = await request(baseUrl, '/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken: login.refreshToken },
+  });
+  if (refreshed.status !== 200) {
+    throw new Error(`Failed to refresh token after developer approval: ${JSON.stringify(refreshed.body)}`);
+  }
 
   return {
     email,
     password,
-    token: upgraded.body.token,
-    refreshToken: upgraded.body.refreshToken,
-    user: upgraded.body.user,
+    token: refreshed.body.token,
+    refreshToken: refreshed.body.refreshToken,
+    user: refreshed.body.user,
   };
 };
 
 const registerAsUser = async (baseUrl, namePrefix = 'user') => {
   const email = randomEmail(namePrefix);
   const password = 'Pass@12345';
-  const login = await registerVerifyLogin(baseUrl, {
+  await registerUser(baseUrl, {
     name: `${namePrefix}-user`,
     email,
     password,
   });
+  const login = await loginUser(baseUrl, { email, password });
   return {
     email,
     password,
@@ -155,9 +151,7 @@ module.exports = {
   request,
   randomEmail,
   registerUser,
-  verifyEmail,
   loginUser,
-  registerVerifyLogin,
   registerAsDeveloper,
   registerAsUser,
   loginAdmin,

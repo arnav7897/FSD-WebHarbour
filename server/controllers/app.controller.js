@@ -7,6 +7,9 @@ const {
   createAppVersion,
   listAppVersions,
 } = require('../services/app.service');
+const { uploadApk } = require('../services/upload.service');
+const { createHttpError } = require('../middleware/error.middleware');
+const fs = require('fs');
 const { submitAppForReview } = require('../services/moderation.service');
 const {
   createDownloadRecord,
@@ -90,6 +93,49 @@ const listAppVersionsHandler = async (req, res, next) => {
   }
 };
 
+const uploadAppVersionHandler = async (req, res, next) => {
+  const file = req.file;
+  try {
+    if (!file) {
+      throw createHttpError(400, 'apk file is required');
+    }
+    const { version, changelog, fileSize, supportedOs } = req.body || {};
+    if (!version) {
+      throw createHttpError(400, 'version is required');
+    }
+
+    const uploadResult = await uploadApk(file.path, file.originalname);
+    const bytes = uploadResult.bytes || 0;
+    const sizeLabel = fileSize || (bytes ? `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB` : '0 MB');
+    const supported = supportedOs
+      ? String(supportedOs).split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    const created = await createAppVersion({
+      appId: req.params.id,
+      userId: req.user.id,
+      body: {
+        version,
+        changelog,
+        downloadUrl: uploadResult.url,
+        fileSize: sizeLabel,
+        supportedOs: supported,
+      },
+    });
+
+    return res.status(201).json({
+      ...created,
+      uploadUrl: uploadResult.url,
+    });
+  } catch (err) {
+    return next(err);
+  } finally {
+    if (file && file.path) {
+      fs.unlink(file.path, () => {});
+    }
+  }
+};
+
 const downloadAppHandler = async (req, res, next) => {
   try {
     const result = await createDownloadRecord({
@@ -140,6 +186,7 @@ module.exports = {
   submitAppHandler,
   createAppVersionHandler,
   listAppVersionsHandler,
+  uploadAppVersionHandler,
   downloadAppHandler,
   addFavoriteHandler,
   removeFavoriteHandler,

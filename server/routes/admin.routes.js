@@ -6,6 +6,9 @@ const {
   rejectAppHandler,
   suspendAppHandler,
   unsuspendAppHandler,
+  listDeveloperRequestsHandler,
+  approveDeveloperRequestHandler,
+  rejectDeveloperRequestHandler,
 } = require('../controllers/admin.controller');
 const { listReportsHandler, resolveReportHandler } = require('../controllers/report.controller');
 
@@ -169,6 +172,90 @@ router.patch('/apps/:id/suspend', auth, requireRole('ADMIN'), suspendAppHandler)
  *         description: Invalid status transition
  */
 router.patch('/apps/:id/unsuspend', auth, requireRole('ADMIN'), unsuspendAppHandler);
+
+/**
+ * @openapi
+ * /admin/developers/requests:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List developer access requests
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, APPROVED]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Developer requests list
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/developers/requests', auth, requireRole('ADMIN'), listDeveloperRequestsHandler);
+
+/**
+ * @openapi
+ * /admin/developers/{userId}/approve:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Approve developer access request
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Developer approved
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ */
+router.patch('/developers/:userId/approve', auth, requireRole('ADMIN'), approveDeveloperRequestHandler);
+
+/**
+ * @openapi
+ * /admin/developers/{userId}/reject:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Reject developer access request
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Developer request rejected
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ */
+router.patch('/developers/:userId/reject', auth, requireRole('ADMIN'), rejectDeveloperRequestHandler);
 
 /**
  * @openapi

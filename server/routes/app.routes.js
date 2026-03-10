@@ -10,12 +10,19 @@ const {
   submitAppHandler,
   createAppVersionHandler,
   listAppVersionsHandler,
+  uploadAppVersionHandler,
   downloadAppHandler,
   addFavoriteHandler,
   removeFavoriteHandler,
 } = require('../controllers/app.controller');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
+const uploadDir = path.join(__dirname, '..', 'tmp', 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir });
 
 /**
  * @openapi
@@ -423,6 +430,55 @@ router.delete('/:id/favorite', auth, requireRole('USER'), removeFavoriteHandler)
  *         description: Duplicate version
  */
 router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/versions/upload:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Upload APK and create a new app version
+ *     description: Uploads APK to Cloudinary and creates an app version with the returned download URL.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [apk, version]
+ *             properties:
+ *               apk:
+ *                 type: string
+ *                 format: binary
+ *               version:
+ *                 type: string
+ *               changelog:
+ *                 type: string
+ *               fileSize:
+ *                 type: string
+ *               supportedOs:
+ *                 type: string
+ *                 description: Comma-separated list (e.g., WEB,WINDOWS,ANDROID)
+ *     responses:
+ *       201:
+ *         description: Version created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App not found
+ */
+router.post('/:id/versions/upload', auth, requireRole('DEVELOPER'), upload.single('apk'), uploadAppVersionHandler);
 
 /**
  * @openapi

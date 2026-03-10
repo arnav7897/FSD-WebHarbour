@@ -4,6 +4,11 @@ const {
   suspendApp,
   unsuspendApp,
 } = require('../services/moderation.service');
+const {
+  listDeveloperRequests,
+  approveDeveloperRequest,
+  rejectDeveloperRequest,
+} = require('../services/auth.service');
 
 const approveAppHandler = async (req, res, next) => {
   try {
@@ -57,9 +62,39 @@ const unsuspendAppHandler = async (req, res, next) => {
   }
 };
 
+const listDeveloperRequestsHandler = async (req, res, next) => {
+  try {
+    const result = await listDeveloperRequests(req.query);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const approveDeveloperRequestHandler = async (req, res, next) => {
+  try {
+    const result = await approveDeveloperRequest(Number(req.params.userId));
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const rejectDeveloperRequestHandler = async (req, res, next) => {
+  try {
+    const result = await rejectDeveloperRequest(Number(req.params.userId));
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   approveAppHandler,
   rejectAppHandler,
   suspendAppHandler,
   unsuspendAppHandler,
+  listDeveloperRequestsHandler,
+  approveDeveloperRequestHandler,
+  rejectDeveloperRequestHandler,
 };

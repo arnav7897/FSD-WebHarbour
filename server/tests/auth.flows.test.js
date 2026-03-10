@@ -7,11 +7,10 @@ const {
   request,
   randomEmail,
   registerUser,
-  verifyEmail,
   loginUser,
 } = require('./helpers');
 
-test('auth flows: verify email, refresh, logout revoke, reset password', async () => {
+test('auth flows: login, refresh, logout revoke, reset password', async () => {
   const { server, baseUrl } = await startTestServer();
   try {
     const email = randomEmail('auth');
@@ -23,19 +22,6 @@ test('auth flows: verify email, refresh, logout revoke, reset password', async (
       email,
       password,
     });
-
-    assert.equal(register.verificationRequired, true);
-    assert.ok(register.verificationToken, 'verificationToken missing (enable AUTH_EXPOSE_DEBUG_TOKENS)');
-
-    const loginBeforeVerify = await request(baseUrl, '/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    });
-    assert.equal(loginBeforeVerify.status, 403);
-    assert.equal(loginBeforeVerify.body.success, false);
-    assert.equal(loginBeforeVerify.body.error.code, 'FORBIDDEN');
-
-    await verifyEmail(baseUrl, register.verificationToken);
 
     const login = await loginUser(baseUrl, { email, password });
     assert.ok(login.token);

@@ -39,7 +39,6 @@ WebHarbour is an app marketplace platform. The backend (API + database + documen
   - overview totals
   - per-app analytics with version-wise trends
 - Auth hardening:
-  - email verification flow
   - logout + logout-all (refresh token revocation)
   - password reset flow
 - Backend quality:
@@ -70,7 +69,7 @@ Goal: Build full production-style frontend on top of stabilized backend APIs.
 
 ### 2. User-Facing Features
 - Authentication screens:
-  - register, login, verify email, reset password
+  - register, login, reset password
 - Marketplace screens:
   - app listing with filters/search
   - app detail page
@@ -79,7 +78,7 @@ Goal: Build full production-style frontend on top of stabilized backend APIs.
   - download actions
 
 ### 3. Developer Features
-- Developer onboarding (`become-developer`)
+- Developer onboarding (request access, admin approval)
 - App management dashboard:
   - create/edit apps
   - submit for review

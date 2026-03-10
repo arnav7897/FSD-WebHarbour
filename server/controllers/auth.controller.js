@@ -1,12 +1,11 @@
 const {
   registerUser,
   loginUser,
-  becomeDeveloper,
+  requestDeveloperAccess,
+  getDeveloperRequestStatus,
   refreshAccessToken,
   logout,
   logoutAll,
-  requestEmailVerification,
-  verifyEmail,
   requestPasswordReset,
   resetPassword,
   getUserById,
@@ -82,18 +81,8 @@ const refresh = async (req, res, next) => {
 
 const becomeDeveloperHandler = async (req, res, next) => {
   try {
-    const { token, refreshToken, user } = await becomeDeveloper(req.user.id, {
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.ip,
-    });
-
-    return res.json({
-      token,
-      tokenType: 'Bearer',
-      expiresIn: JWT_EXPIRES_IN,
-      refreshToken,
-      user,
-    });
+    const result = await requestDeveloperAccess(req.user.id);
+    return res.json(result);
   } catch (err) {
     return next(err);
   }
@@ -110,8 +99,6 @@ const me = async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      isVerified: user.isVerified,
-      emailVerifiedAt: user.emailVerifiedAt,
     });
   } catch (err) {
     return next(err);
@@ -140,30 +127,10 @@ const logoutAllHandler = async (req, res, next) => {
   }
 };
 
-const requestEmailVerificationHandler = async (req, res, next) => {
+const developerStatusHandler = async (req, res, next) => {
   try {
-    const { email } = req.body || {};
-    if (!email) {
-      throw createHttpError(400, 'email is required');
-    }
-    const result = await requestEmailVerification(email);
+    const result = await getDeveloperRequestStatus(req.user.id);
     return res.json(result);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-const verifyEmailHandler = async (req, res, next) => {
-  try {
-    const { token } = req.body || {};
-    if (!token) {
-      throw createHttpError(400, 'token is required');
-    }
-    const user = await verifyEmail(token);
-    return res.json({
-      message: 'Email verified successfully',
-      user,
-    });
   } catch (err) {
     return next(err);
   }
@@ -199,12 +166,11 @@ module.exports = {
   register,
   login,
   becomeDeveloper: becomeDeveloperHandler,
+  developerStatus: developerStatusHandler,
   refresh,
   me,
   logout: logoutHandler,
   logoutAll: logoutAllHandler,
-  requestEmailVerification: requestEmailVerificationHandler,
-  verifyEmail: verifyEmailHandler,
   requestPasswordReset: requestPasswordResetHandler,
   resetPassword: resetPasswordHandler,
 };

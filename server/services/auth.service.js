@@ -5,9 +5,7 @@ const { signToken } = require('../utlis/jwt');
 const {
   JWT_EXPIRES_IN,
   REFRESH_TOKEN_EXPIRES_IN,
-  EMAIL_VERIFICATION_TOKEN_EXPIRES_IN,
   PASSWORD_RESET_TOKEN_EXPIRES_IN,
-  AUTH_REQUIRE_EMAIL_VERIFIED,
   AUTH_EXPOSE_DEBUG_TOKENS,
 } = require('../config/env');
 
@@ -16,7 +14,6 @@ const sanitizeUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
-  isVerified: user.isVerified,
 });
 
 const makeHttpError = (message, status) => {
@@ -25,10 +22,10 @@ const makeHttpError = (message, status) => {
   return err;
 };
 
-const assertAuthSchemaAvailable = () => {
-  if (!prisma.emailVerificationToken || !prisma.passwordResetToken) {
+const assertPasswordResetSchemaAvailable = () => {
+  if (!prisma.passwordResetToken) {
     throw makeHttpError(
-      'Auth hardening tables are not available. Run Prisma migration and generate client.',
+      'Password reset tables are not available. Run Prisma migration and generate client.',
       500,
     );
   }
@@ -48,10 +45,6 @@ const parseDurationToMs = (value, fallbackMs) => {
 };
 
 const refreshTokenLifetimeMs = parseDurationToMs(REFRESH_TOKEN_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000);
-const emailVerificationLifetimeMs = parseDurationToMs(
-  EMAIL_VERIFICATION_TOKEN_EXPIRES_IN,
-  24 * 60 * 60 * 1000,
-);
 const passwordResetLifetimeMs = parseDurationToMs(
   PASSWORD_RESET_TOKEN_EXPIRES_IN,
   15 * 60 * 1000,
@@ -83,31 +76,8 @@ const buildDebugTokenResponse = (fieldName, rawToken, expiresAt) => {
   };
 };
 
-const issueEmailVerificationToken = async (userId) => {
-  assertAuthSchemaAvailable();
-  const now = new Date();
-  await prisma.emailVerificationToken.updateMany({
-    where: { userId, usedAt: null, expiresAt: { gt: now } },
-    data: { usedAt: now },
-  });
-
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + emailVerificationLifetimeMs);
-
-  await prisma.emailVerificationToken.create({
-    data: {
-      tokenHash,
-      userId,
-      expiresAt,
-    },
-  });
-
-  return { rawToken, expiresAt };
-};
-
 const issuePasswordResetToken = async (userId) => {
-  assertAuthSchemaAvailable();
+  assertPasswordResetSchemaAvailable();
   const now = new Date();
   await prisma.passwordResetToken.updateMany({
     where: { userId, usedAt: null, expiresAt: { gt: now } },
@@ -143,16 +113,11 @@ const registerUser = async ({ name, email, password }) => {
       email: normalizedEmail,
       passwordHash,
       role: 'USER',
-      isVerified: false,
     },
   });
 
-  const verification = await issueEmailVerificationToken(user.id);
-
   return {
     user: sanitizeUser(user),
-    verificationRequired: true,
-    ...buildDebugTokenResponse('verificationToken', verification.rawToken, verification.expiresAt),
   };
 };
 
@@ -164,10 +129,6 @@ const loginUser = async ({ email, password, requestMeta }) => {
   const ok = await comparePassword(password, user.passwordHash);
   if (!ok) throw makeHttpError('Invalid credentials', 401);
 
-  if (AUTH_REQUIRE_EMAIL_VERIFIED && !user.isVerified) {
-    throw makeHttpError('Email not verified. Please verify your email before login.', 403);
-  }
-
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
@@ -177,26 +138,148 @@ const loginUser = async ({ email, password, requestMeta }) => {
   return { ...tokens, user: sanitizeUser(user) };
 };
 
-const becomeDeveloper = async (userId, requestMeta) => {
+const requestDeveloperAccess = async (userId) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw makeHttpError('User not found', 404);
 
-  let updatedUser = user;
-  if (user.role === 'USER') {
-    updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { role: 'DEVELOPER' },
+  if (user.role === 'DEVELOPER' || user.role === 'ADMIN') {
+    return { status: 'APPROVED', user: sanitizeUser(user) };
+  }
+
+  const existing = await prisma.developerProfile.findUnique({ where: { userId } });
+  if (existing && existing.isVerified) {
+    return {
+      status: 'APPROVED',
+      user: sanitizeUser(user),
+      verifiedAt: existing.verifiedAt,
+    };
+  }
+
+  if (existing && existing.verificationRequestedAt) {
+    return {
+      status: 'PENDING',
+      requestedAt: existing.verificationRequestedAt,
+    };
+  }
+
+  const now = new Date();
+  const profile = await prisma.developerProfile.upsert({
+    where: { userId },
+    update: { verificationRequestedAt: now, isVerified: false, verifiedAt: null },
+    create: { userId, verificationRequestedAt: now, isVerified: false },
+  });
+
+  return {
+    status: 'PENDING',
+    requestedAt: profile.verificationRequestedAt,
+  };
+};
+
+const getDeveloperRequestStatus = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw makeHttpError('User not found', 404);
+
+  if (user.role === 'DEVELOPER' || user.role === 'ADMIN') {
+    return { status: 'APPROVED', user: sanitizeUser(user) };
+  }
+
+  const profile = await prisma.developerProfile.findUnique({ where: { userId } });
+  if (profile && profile.isVerified) {
+    return { status: 'APPROVED', verifiedAt: profile.verifiedAt };
+  }
+  if (profile && profile.verificationRequestedAt) {
+    return { status: 'PENDING', requestedAt: profile.verificationRequestedAt };
+  }
+  return { status: 'NONE' };
+};
+
+const listDeveloperRequests = async ({ status, page = 1, limit = 20 } = {}) => {
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const skip = (safePage - 1) * safeLimit;
+  const normalizedStatus = status ? String(status).toUpperCase() : 'PENDING';
+
+  const where = {};
+  if (normalizedStatus === 'APPROVED') {
+    where.isVerified = true;
+  } else {
+    where.isVerified = false;
+    where.verificationRequestedAt = { not: null };
+  }
+
+  const [items, total] = await prisma.$transaction([
+    prisma.developerProfile.findMany({
+      where,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true, createdAt: true },
+        },
+      },
+      orderBy: { verificationRequestedAt: 'desc' },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.developerProfile.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.max(Math.ceil(total / safeLimit), 1),
+    },
+  };
+};
+
+const approveDeveloperRequest = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw makeHttpError('User not found', 404);
+  if (user.role === 'ADMIN') {
+    return { status: 'APPROVED', user: sanitizeUser(user) };
+  }
+
+  const now = new Date();
+  const updatedUser = user.role === 'DEVELOPER'
+    ? user
+    : await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'DEVELOPER' },
+      });
+
+  const existing = await prisma.developerProfile.findUnique({ where: { userId } });
+  if (existing) {
+    await prisma.developerProfile.update({
+      where: { userId },
+      data: {
+        isVerified: true,
+        verifiedAt: now,
+        verificationRequestedAt: existing.verificationRequestedAt || now,
+      },
+    });
+  } else {
+    await prisma.developerProfile.create({
+      data: { userId, isVerified: true, verifiedAt: now, verificationRequestedAt: now },
     });
   }
 
-  await prisma.developerProfile.upsert({
+  return { status: 'APPROVED', user: sanitizeUser(updatedUser), verifiedAt: now };
+};
+
+const rejectDeveloperRequest = async (userId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw makeHttpError('User not found', 404);
+  if (user.role === 'DEVELOPER') {
+    throw makeHttpError('User is already a developer', 409);
+  }
+
+  await prisma.developerProfile.updateMany({
     where: { userId },
-    update: {},
-    create: { userId },
+    data: { isVerified: false, verifiedAt: null, verificationRequestedAt: null },
   });
 
-  const tokens = await issueTokens(updatedUser, requestMeta);
-  return { ...tokens, user: sanitizeUser(updatedUser) };
+  return { status: 'REJECTED' };
 };
 
 const refreshAccessToken = async (refreshToken, requestMeta) => {
@@ -214,10 +297,6 @@ const refreshAccessToken = async (refreshToken, requestMeta) => {
 
   const user = await prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user) throw makeHttpError('Invalid refresh token', 401);
-  if (AUTH_REQUIRE_EMAIL_VERIFIED && !user.isVerified) {
-    throw makeHttpError('Email not verified. Please verify your email before login.', 403);
-  }
-
   const tokens = await issueTokens(user, requestMeta);
   return { ...tokens, user: sanitizeUser(user) };
 };
@@ -239,59 +318,6 @@ const logoutAll = async (userId) => {
   return { message: 'Logged out from all sessions' };
 };
 
-const requestEmailVerification = async (email) => {
-  const normalizedEmail = normalizeEmail(email);
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (!user || user.isVerified) {
-    return { message: 'If the email exists, a verification link has been sent.' };
-  }
-
-  const verification = await issueEmailVerificationToken(user.id);
-  return {
-    message: 'If the email exists, a verification link has been sent.',
-    ...buildDebugTokenResponse('verificationToken', verification.rawToken, verification.expiresAt),
-  };
-};
-
-const verifyEmail = async (token) => {
-  assertAuthSchemaAvailable();
-  const tokenHash = hashToken(token);
-
-  const record = await prisma.emailVerificationToken.findUnique({
-    where: { tokenHash },
-    include: {
-      user: true,
-    },
-  });
-
-  if (!record || record.usedAt || record.expiresAt <= new Date()) {
-    throw makeHttpError('Invalid or expired verification token', 401);
-  }
-
-  const now = new Date();
-  const updatedUser = await prisma.$transaction(async (tx) => {
-    await tx.emailVerificationToken.update({
-      where: { id: record.id },
-      data: { usedAt: now },
-    });
-
-    await tx.emailVerificationToken.updateMany({
-      where: { userId: record.userId, usedAt: null },
-      data: { usedAt: now },
-    });
-
-    return tx.user.update({
-      where: { id: record.userId },
-      data: {
-        isVerified: true,
-        emailVerifiedAt: now,
-      },
-    });
-  });
-
-  return sanitizeUser(updatedUser);
-};
-
 const requestPasswordReset = async (email) => {
   const normalizedEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -307,7 +333,7 @@ const requestPasswordReset = async (email) => {
 };
 
 const resetPassword = async ({ token, newPassword }) => {
-  assertAuthSchemaAvailable();
+  assertPasswordResetSchemaAvailable();
   if (!newPassword || String(newPassword).length < 6) {
     throw makeHttpError('newPassword must be at least 6 characters', 400);
   }
@@ -355,12 +381,14 @@ const getUserById = (id) => prisma.user.findUnique({ where: { id } });
 module.exports = {
   registerUser,
   loginUser,
-  becomeDeveloper,
+  requestDeveloperAccess,
+  getDeveloperRequestStatus,
+  listDeveloperRequests,
+  approveDeveloperRequest,
+  rejectDeveloperRequest,
   refreshAccessToken,
   logout,
   logoutAll,
-  requestEmailVerification,
-  verifyEmail,
   requestPasswordReset,
   resetPassword,
   getUserById,

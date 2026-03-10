@@ -78,16 +78,12 @@ const seedAdmin = async () => {
       name: DEFAULT_ADMIN_NAME,
       passwordHash,
       role: 'ADMIN',
-      isVerified: true,
-      emailVerifiedAt: new Date(),
     },
     create: {
       name: DEFAULT_ADMIN_NAME,
       email: DEFAULT_ADMIN_EMAIL,
       passwordHash,
       role: 'ADMIN',
-      isVerified: true,
-      emailVerifiedAt: new Date(),
     },
   });
 };

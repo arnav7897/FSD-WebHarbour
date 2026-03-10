@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Versions - WebHarbour</title>
+  <link rel="stylesheet" href="../../css/main.css" />
+</head>
+<body data-requires-role="DEVELOPER">
+  <div id="nav"></div>
+  <main class="container">
+    <h2 class="section-title">Version Management</h2>
+    <div class="card" style="margin-bottom: 24px;">
+      <form id="versionForm">
+        <div class="form-row">
+          <label>Version</label>
+          <input class="input" type="text" name="version" required />
+        </div>
+        <div class="form-row">
+          <label>Changelog</label>
+          <textarea class="input" name="changelog"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Download URL (optional if uploading APK)</label>
+          <input class="input" type="url" name="downloadUrl" />
+        </div>
+        <div class="form-row">
+          <label>APK File</label>
+          <input class="input" type="file" name="apk" accept=".apk" />
+        </div>
+        <div class="form-row">
+          <label>File size</label>
+          <input class="input" type="text" name="fileSize" placeholder="52 MB" />
+        </div>
+        <div class="form-row">
+          <label>Supported OS (comma separated)</label>
+          <input class="input" type="text" name="supportedOs" placeholder="WEB,WINDOWS,MACOS" />
+        </div>
+        <button class="button" type="submit">Add version</button>
+      </form>
+    </div>
+
+    <div id="versionList" class="grid grid-2"></div>
+  </main>
+
+  <script src="../../js/config.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/ui.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/pages/developer/versions.js"></script>
+</body>
+</html>
+

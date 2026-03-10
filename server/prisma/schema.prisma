@@ -60,10 +60,7 @@ model User {
   avatarUrl               String?
   bio                     String?
   role                    Role                     @default(USER)
-  isVerified              Boolean                  @default(false)
-  emailVerifiedAt         DateTime?
   refreshTokens           RefreshToken[]
-  emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   apps                    App[]
   reviews                 Review[]
@@ -690,20 +687,6 @@ model RefreshToken {
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-model EmailVerificationToken {
-  id        Int       @id @default(autoincrement())
-  tokenHash String    @unique
-  userId    Int
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 
   @@index([userId])
   @@index([expiresAt])
