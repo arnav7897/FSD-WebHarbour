@@ -6,10 +6,10 @@ form.addEventListener("submit", async (e) => {
   ui.setLoading(btn, true);
   try {
     await auth.register(data);
-    ui.toast("Registration complete. Please log in.", "success");
+    ui.toast("Account created. Sign in to continue.", "success");
     window.location.href = ui.pageUrl("pages/auth/login.html");
   } catch (err) {
-    ui.toast(err.message || "Registration failed", "error");
+    ui.toast(err.message || "Could not create account. Try again shortly.", "error");
   } finally {
     ui.setLoading(btn, false);
   }

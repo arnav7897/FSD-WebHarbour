@@ -6,6 +6,7 @@ const {
   publishApp,
   createAppVersion,
   listAppVersions,
+  getVersionDownloadInfo,
 } = require('../services/app.service');
 const { uploadApk } = require('../services/upload.service');
 const { createHttpError } = require('../middleware/error.middleware');
@@ -16,6 +17,7 @@ const {
   addFavorite,
   removeFavorite,
 } = require('../services/engagement.service');
+const { verifyToken } = require('../utlis/jwt');
 
 const createAppHandler = async (req, res, next) => {
   try {
@@ -105,6 +107,10 @@ const uploadAppVersionHandler = async (req, res, next) => {
     }
 
     const uploadResult = await uploadApk(file.path, file.originalname);
+    const downloadUrl = uploadResult.url;
+    if (!downloadUrl) {
+      throw createHttpError(500, 'APK uploaded but no download URL returned from Cloudinary.');
+    }
     const bytes = uploadResult.bytes || 0;
     const sizeLabel = fileSize || (bytes ? `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB` : '0 MB');
     const supported = supportedOs
@@ -117,7 +123,7 @@ const uploadAppVersionHandler = async (req, res, next) => {
       body: {
         version,
         changelog,
-        downloadUrl: uploadResult.url,
+        downloadUrl,
         fileSize: sizeLabel,
         supportedOs: supported,
       },
@@ -131,7 +137,7 @@ const uploadAppVersionHandler = async (req, res, next) => {
     return next(err);
   } finally {
     if (file && file.path) {
-      fs.unlink(file.path, () => {});
+      fs.unlink(file.path, () => { });
     }
   }
 };
@@ -148,6 +154,39 @@ const downloadAppHandler = async (req, res, next) => {
       },
     });
     return res.status(201).json(result);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const downloadAppRedirectHandler = async (req, res, next) => {
+  try {
+    if (!req.user && req.query?.token) {
+      try {
+        req.user = verifyToken(String(req.query.token));
+      } catch (err) {
+        return next(createHttpError(401, 'Invalid token', 'AUTH_TOKEN_INVALID'));
+      }
+    }
+
+    const versionInfo = await getVersionDownloadInfo({
+      appId: req.params.id,
+      versionId: req.query.versionId,
+    });
+
+    if (req.user && req.user.id) {
+      await createDownloadRecord({
+        appId: req.params.id,
+        userId: req.user.id,
+        body: { versionId: versionInfo.versionId },
+        requestMeta: {
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+      });
+    }
+
+    return res.redirect(versionInfo.downloadUrl);
   } catch (err) {
     return next(err);
   }
@@ -188,6 +227,7 @@ module.exports = {
   listAppVersionsHandler,
   uploadAppVersionHandler,
   downloadAppHandler,
+  downloadAppRedirectHandler,
   addFavoriteHandler,
   removeFavoriteHandler,
 };

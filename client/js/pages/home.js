@@ -27,8 +27,9 @@
   const pickGradient = (name) => gradients[hash(String(name || "")) % gradients.length];
 
   const renderAppCard = (app, wide = false) => {
-    const card = document.createElement("article");
+    const card = document.createElement("a");
     card.className = `app-card${wide ? " wide" : ""}`;
+    card.href = ui.pageUrl(`pages/apps/detail.html?id=${app.id}`);
     const icon = document.createElement("div");
     icon.className = `app-icon ${pickGradient(app.name)}`;
     icon.textContent = initials(app.name);
@@ -94,7 +95,7 @@
     const details = document.createElement("a");
     details.className = "button secondary";
     details.textContent = "Details";
-    details.href = app ? `pages/apps/detail.html?id=${app.id}` : "#";
+    details.href = app ? ui.pageUrl(`pages/apps/detail.html?id=${app.id}`) : "#";
     if (!app) details.setAttribute("aria-disabled", "true");
 
     toolbar.appendChild(install);

@@ -27,6 +27,6 @@
   try {
     await api.get("/health");
   } catch {
-    ui.toast("Backend unreachable. Check API_BASE_URL.", "error");
+    ui.toast("Site backend is unavailable right now. Confirm API_BASE_URL and try again.", "error");
   }
 })();

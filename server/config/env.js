@@ -1,7 +1,8 @@
 const dotenv = require('dotenv');
+const path = require('path');
 const { DEFAULT_PORT } = require('./constants');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const PORT = Number(process.env.PORT) || DEFAULT_PORT;
 const NODE_ENV = process.env.NODE_ENV || 'development';

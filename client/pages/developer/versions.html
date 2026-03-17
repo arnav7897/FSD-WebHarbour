@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>Versions - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
 </head>
@@ -10,6 +11,7 @@
   <div id="nav"></div>
   <main class="container">
     <h2 class="section-title">Version Management</h2>
+    <div id="versionStatus" class="empty" style="margin-bottom: 16px;">Loading version tools...</div>
     <div class="card" style="margin-bottom: 24px;">
       <form id="versionForm">
         <div class="form-row">
@@ -36,11 +38,12 @@
           <label>Supported OS (comma separated)</label>
           <input class="input" type="text" name="supportedOs" placeholder="WEB,WINDOWS,MACOS" />
         </div>
-        <button class="button" type="submit">Add version</button>
+        <button class="button" type="submit" id="submitVersion">Add version</button>
       </form>
     </div>
 
     <div id="versionList" class="grid grid-2"></div>
+    <pre id="versionDebug" class="card" style="margin-top: 16px;"></pre>
   </main>
 
   <script src="../../js/config.js"></script>

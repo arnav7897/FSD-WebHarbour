@@ -9,11 +9,12 @@ function metricCard(label, value) {
 
 async function loadOverview() {
   const data = await api.get("/developer/analytics/overview");
+  const totals = data.totals || {};
   const items = [
-    ["Total Apps", data.totalApps || 0],
-    ["Total Downloads", data.totalDownloads || 0],
-    ["Total Favorites", data.totalFavorites || 0],
-    ["Avg Rating", data.averageRating || 0]
+    ["Total Apps", totals.apps || data.totalApps || 0],
+    ["Total Downloads", totals.downloads || data.totalDownloads || 0],
+    ["Total Favorites", totals.favorites || data.totalFavorites || 0],
+    ["Avg Rating", totals.averageRating || data.averageRating || 0]
   ];
   overviewEl.innerHTML = items.map(i => metricCard(i[0], i[1])).join("");
 }
@@ -24,17 +25,21 @@ async function loadAppAnalytics() {
     return;
   }
   const data = await api.get(`/developer/analytics/apps/${appId}`);
-  const versions = data.versions || [];
+  const totals = data.totals || {};
+  const versionBlock = data.versions || {};
+  const versions = Array.isArray(versionBlock)
+    ? versionBlock
+    : (versionBlock.trends || []);
   appAnalytics.innerHTML = `
     <div class="toolbar">
-      <span class="badge">Downloads: ${data.totalDownloads || 0}</span>
-      <span class="badge">Favorites: ${data.totalFavorites || 0}</span>
-      <span class="badge">Avg Rating: ${data.averageRating || 0}</span>
+      <span class="badge">Downloads: ${totals.downloads || data.totalDownloads || 0}</span>
+      <span class="badge">Favorites: ${totals.favorites || data.totalFavorites || 0}</span>
+      <span class="badge">Avg Rating: ${totals.averageRating || data.averageRating || 0}</span>
     </div>
     <table class="table">
-      <thead><tr><th>Version</th><th>Downloads</th><th>Favorites</th></tr></thead>
+      <thead><tr><th>Version</th><th>Downloads</th><th>Installs</th><th>Adoption %</th></tr></thead>
       <tbody>
-        ${versions.map(v => `<tr><td>${escapeHtml(v.version)}</td><td>${v.downloads || 0}</td><td>${v.favorites || 0}</td></tr>`).join("")}
+        ${versions.map(v => `<tr><td>${escapeHtml(v.version)}</td><td>${v.downloads || 0}</td><td>${v.installs || 0}</td><td>${v.adoptionRate || 0}</td></tr>`).join("")}
       </tbody>
     </table>
   `;

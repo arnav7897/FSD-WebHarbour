@@ -162,8 +162,8 @@ const createApp = async ({ userId, body }) => {
       platforms: ['WEB'],
       tags: tagIds.length
         ? {
-            create: tagIds.map((tagId) => ({ tagId })),
-          }
+          create: tagIds.map((tagId) => ({ tagId })),
+        }
         : undefined,
     },
     include: appInclude,
@@ -332,9 +332,22 @@ const createAppVersion = async ({ appId, userId, body }) => {
   }
 
   const app = await assertOwnership(parsedAppId, userId);
-  const normalizedSupportedOs = Array.isArray(supportedOs) && supportedOs.length
-    ? supportedOs.map((item) => String(item).toUpperCase())
-    : app.platforms;
+  const parsePlatformList = (input) => {
+    if (!input) return [];
+    if (Array.isArray(input)) return input;
+    if (typeof input === 'string') {
+      return input.split(',').map((part) => part.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const platformInput = parsePlatformList(supportedOs).length ? parsePlatformList(supportedOs) : app.platforms;
+  const normalizedSupportedOs = (platformInput || []).map((item) => {
+    const upper = String(item || '').toUpperCase().trim();
+    if (upper === 'ANDROID') return 'MOBILE_ANDROID';
+    if (upper === 'IOS') return 'MOBILE_IOS';
+    return upper;
+  });
 
   const invalidPlatform = normalizedSupportedOs.find((value) => !PLATFORMS.includes(value));
   if (invalidPlatform) {
@@ -342,15 +355,43 @@ const createAppVersion = async ({ appId, userId, body }) => {
   }
 
   try {
-    return await prisma.appVersion.create({
-      data: {
-        appId: parsedAppId,
-        version: String(version),
-        changelog: changelog ? String(changelog) : null,
-        downloadUrl: String(downloadUrl),
-        fileSize: fileSize ? String(fileSize) : '0 MB',
-        supportedOs: normalizedSupportedOs,
-      },
+    return await prisma.$transaction(async (tx) => {
+      const created = await tx.appVersion.create({
+        data: {
+          appId: parsedAppId,
+          version: String(version),
+          changelog: changelog ? String(changelog) : null,
+          downloadUrl: String(downloadUrl),
+          fileSize: fileSize ? String(fileSize) : '0 MB',
+          supportedOs: normalizedSupportedOs,
+        },
+      });
+
+      if (changelog) {
+        await tx.versionChangeLog.create({
+          data: {
+            versionId: created.id,
+            changeType: 'OTHER',
+            title: `Release ${created.version}`,
+            description: String(changelog),
+            authorId: userId,
+            affectedPlatforms: normalizedSupportedOs,
+          },
+        });
+      }
+
+      await tx.versionAnalytics.upsert({
+        where: { versionId: created.id },
+        update: {},
+        create: {
+          versionId: created.id,
+          appId: parsedAppId,
+          date: new Date(),
+          period: 'DAILY',
+        },
+      });
+
+      return created;
     });
   } catch (err) {
     if (err.code === 'P2002') {
@@ -377,6 +418,40 @@ const listAppVersions = async (appId) => {
   });
 };
 
+const getVersionDownloadInfo = async ({ appId, versionId }) => {
+  const parsedAppId = parseInteger(appId);
+  if (!parsedAppId) throw makeHttpError('Invalid app id', 400);
+
+  const parsedVersionId = versionId ? parseInteger(versionId) : null;
+
+  const app = await prisma.app.findUnique({
+    where: { id: parsedAppId },
+    select: { id: true },
+  });
+  if (!app) throw makeHttpError('App not found', 404);
+
+  const version = parsedVersionId
+    ? await prisma.appVersion.findFirst({
+      where: { id: parsedVersionId, appId: parsedAppId },
+      orderBy: { releaseDate: 'desc' },
+    })
+    : await prisma.appVersion.findFirst({
+      where: { appId: parsedAppId },
+      orderBy: [{ releaseDate: 'desc' }, { createdAt: 'desc' }],
+    });
+
+  if (!version) {
+    throw makeHttpError('No version available for download. Create an app version first.', 400);
+  }
+
+  return {
+    appId: app.id,
+    versionId: version.id,
+    version: version.version,
+    downloadUrl: version.downloadUrl,
+  };
+};
+
 module.exports = {
   createApp,
   listApps,
@@ -385,4 +460,5 @@ module.exports = {
   publishApp,
   createAppVersion,
   listAppVersions,
+  getVersionDownloadInfo,
 };

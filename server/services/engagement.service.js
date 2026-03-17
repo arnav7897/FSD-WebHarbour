@@ -38,28 +38,28 @@ const resolveVersionForDownload = async ({ appId, versionId }) => {
   if (parsedVersionId) {
     const version = await prisma.appVersion.findFirst({
       where: { id: parsedVersionId, appId },
-      select: { id: true },
+      select: { id: true, version: true },
     });
     if (!version) throw makeHttpError('Version not found for this app', 404);
-    return version.id;
+    return version;
   }
 
   const latestVersion = await prisma.appVersion.findFirst({
     where: { appId },
     orderBy: [{ releaseDate: 'desc' }, { createdAt: 'desc' }],
-    select: { id: true },
+    select: { id: true, version: true },
   });
 
   if (!latestVersion) {
     throw makeHttpError('No version available for download. Create an app version first.', 400);
   }
 
-  return latestVersion.id;
+  return latestVersion;
 };
 
 const createDownloadRecord = async ({ appId, userId, body = {}, requestMeta = {} }) => {
   const app = await ensureAppExists(appId);
-  const resolvedVersionId = await resolveVersionForDownload({
+  const resolvedVersion = await resolveVersionForDownload({
     appId: app.id,
     versionId: body.versionId,
   });
@@ -80,11 +80,23 @@ const createDownloadRecord = async ({ appId, userId, body = {}, requestMeta = {}
       data: {
         userId,
         appId: app.id,
-        versionId: resolvedVersionId,
+        versionId: resolvedVersion.id,
         ipAddress,
         userAgent,
         downloadMethod: 'api',
         downloadedAt: now,
+      },
+    });
+
+    await tx.versionDownload.create({
+      data: {
+        versionId: resolvedVersion.id,
+        appId: app.id,
+        userId,
+        toVersion: resolvedVersion.version,
+        ipAddress,
+        userAgent,
+        downloadType: 'DIRECT',
       },
     });
 
@@ -97,7 +109,7 @@ const createDownloadRecord = async ({ appId, userId, body = {}, requestMeta = {}
     });
 
     await tx.appVersion.update({
-      where: { id: resolvedVersionId },
+      where: { id: resolvedVersion.id },
       data: {
         downloadCount: { increment: 1 },
         installCount: { increment: 1 },

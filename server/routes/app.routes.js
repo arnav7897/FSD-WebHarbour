@@ -13,6 +13,7 @@ const {
   listAppVersionsHandler,
   uploadAppVersionHandler,
   downloadAppHandler,
+  downloadAppRedirectHandler,
   addFavoriteHandler,
   removeFavoriteHandler,
 } = require('../controllers/app.controller');
@@ -305,6 +306,46 @@ router.post('/:id/publish', auth, requireRole('DEVELOPER'), publishAppHandler);
  *         description: App or version not found
  */
 router.post('/:id/download', auth, requireRole('USER'), downloadAppHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/download/redirect:
+ *   get:
+ *     tags: [Apps]
+ *     summary: Track download and redirect to the file
+ *     description: Creates a download record and redirects to the version download URL.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: versionId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: token
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Optional access token for tracking when using a browser redirect.
+ *     responses:
+ *       302:
+ *         description: Redirect to download URL
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App or version not found
+ */
+router.get('/:id/download/redirect', optionalAuth, downloadAppRedirectHandler);
 
 /**
  * @openapi

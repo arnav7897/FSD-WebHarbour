@@ -40,11 +40,11 @@ async function loadApps() {
       <p>${escapeHtml(app.description || "")}</p>
       <div class="toolbar" style="margin-top: 12px;">
         <span class="badge">${app.status || "PUBLISHED"}</span>
-        <a class="button secondary" href="/pages/apps/detail.html?id=${app.id}">View</a>
+        <a class="button secondary" href="${ui.pageUrl(`pages/apps/detail.html?id=${app.id}`)}">View</a>
       </div>
     </div>
   `).join("");
-  pageInfo.textContent = `Page ${data.page || page}`;
+  pageInfo.textContent = `Page ${data?.pagination?.page || page}`;
 }
 
 function escapeHtml(text) {

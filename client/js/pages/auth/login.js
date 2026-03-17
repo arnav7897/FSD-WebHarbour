@@ -6,10 +6,10 @@ form.addEventListener("submit", async (e) => {
   ui.setLoading(btn, true);
   try {
     await auth.login(data.email, data.password);
-    ui.toast("Welcome back", "success");
+    ui.toast("Logged in. You’re ready to browse apps.", "success");
     window.location.href = ui.pageUrl("pages/apps/index.html");
   } catch (err) {
-    ui.toast(err.message || "Login failed", "error");
+    ui.toast(err.message || "Could not sign in. Check your email and password.", "error");
   } finally {
     ui.setLoading(btn, false);
   }

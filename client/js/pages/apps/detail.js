@@ -7,6 +7,8 @@ const reportForm = document.getElementById("reportForm");
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("id");
 let isFavorited = false;
+let latestVersion = null;
+let currentApp = null;
 
 function requireAppId() {
   if (!appId) {
@@ -17,75 +19,167 @@ function requireAppId() {
 
 async function loadApp() {
   const app = await api.get(`/apps/${appId}`);
+  currentApp = app;
+  renderHeader();
+}
+
+function renderHeader() {
+  if (!currentApp) return;
   const isAuthed = auth.isLoggedIn();
+  const hasDownload = Boolean(latestVersion && latestVersion.downloadUrl);
+  const downloadLabel = latestVersion?.version ? `Download ${escapeHtml(latestVersion.version)}` : "Download";
+  const sizeLabel = latestVersion?.fileSize ? ` · ${escapeHtml(latestVersion.fileSize)}` : "";
+  const releaseDate = formatDate(latestVersion?.releaseDate || latestVersion?.createdAt);
+  const versionMeta = latestVersion
+    ? `<p class="muted">Latest release: ${escapeHtml(latestVersion.version)}${sizeLabel}${releaseDate ? ` · ${releaseDate}` : ""}</p>`
+    : `<p class="muted">No downloadable version yet.</p>`;
+
   appHeader.innerHTML = `
-    <h2 class="section-title">${escapeHtml(app.name)}</h2>
-    <p>${escapeHtml(app.description || "")}</p>
+    <h2 class="section-title">${escapeHtml(currentApp.name)}</h2>
+    <p>${escapeHtml(currentApp.description || "")}</p>
+    ${versionMeta}
     <div class="toolbar" style="margin-top: 12px;">
-      <span class="badge">${app.status || "PUBLISHED"}</span>
-      <button class="button" id="downloadBtn" ${!isAuthed ? "disabled" : ""}>Download</button>
-      <button class="button secondary" id="favoriteBtn" ${!isAuthed ? "disabled" : ""}>${isFavorited ? "Unfavorite" : "Favorite"}</button>
+      <span class="badge">${currentApp.status || "PUBLISHED"}</span>
+      <button class="button" id="downloadBtn" ${!hasDownload || !isAuthed ? "disabled" : ""}>${downloadLabel}</button>
+      <button class="button secondary" id="linkBtn" ${!hasDownload ? "disabled" : ""}>Get link</button>
+      <button class="button ghost" id="favoriteBtn" ${!isAuthed ? "disabled" : ""}>${isFavorited ? "Unfavorite" : "Favorite"}</button>
     </div>
-    ${!isAuthed ? `<p class="muted">Login to download or favorite this app.</p>` : ""}
+    ${!isAuthed ? `<p class="muted">Login to track downloads or favorite this app.</p>` : ""}
   `;
 
-  document.getElementById("downloadBtn").addEventListener("click", async () => {
-    if (!auth.isLoggedIn()) {
-      window.location.href = ui.pageUrl("pages/auth/login.html");
-      return;
-    }
-    try {
-      await api.post(`/apps/${appId}/download`, {});
-      ui.toast("Download tracked", "success");
-    } catch (err) {
-      ui.toast(err.message || "Download failed", "error");
-    }
-  });
+  const downloadBtn = document.getElementById("downloadBtn");
+  const linkBtn = document.getElementById("linkBtn");
+  const favoriteBtn = document.getElementById("favoriteBtn");
 
-  document.getElementById("favoriteBtn").addEventListener("click", async () => {
-    if (!auth.isLoggedIn()) {
-      window.location.href = ui.pageUrl("pages/auth/login.html");
-      return;
-    }
-    try {
-      if (!isFavorited) {
-        await api.post(`/apps/${appId}/favorite`, {});
-        isFavorited = true;
-      } else {
-        await api.del(`/apps/${appId}/favorite`);
-        isFavorited = false;
-      }
-      loadApp();
-    } catch (err) {
-      if (err.status === 409) {
-        isFavorited = true;
-        loadApp();
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", async () => {
+      if (!latestVersion?.downloadUrl) {
+        ui.toast("No download available", "error");
         return;
       }
-      ui.toast(err.message || "Favorite failed", "error");
-    }
-  });
+      if (!auth.isLoggedIn()) {
+        window.location.href = ui.pageUrl("pages/auth/login.html");
+        return;
+      }
+      try {
+        const token = auth.getAccessToken();
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+        window.location.href = `${CONFIG.API_BASE_URL.replace(/\/$/, "")}/apps/${appId}/download/redirect?versionId=${latestVersion.id}${tokenParam}`;
+      } catch (err) {
+        ui.toast(err.message || "Download failed", "error");
+      }
+    });
+  }
+
+  if (linkBtn) {
+    linkBtn.addEventListener("click", async () => {
+      if (!latestVersion?.downloadUrl) {
+        ui.toast("No download link available", "error");
+        return;
+      }
+      const copied = await copyToClipboard(latestVersion.downloadUrl);
+      if (copied) {
+        ui.toast("Download link copied", "success");
+        return;
+      }
+      window.open(latestVersion.downloadUrl, "_blank", "noopener");
+    });
+  }
+
+  if (favoriteBtn) {
+    favoriteBtn.addEventListener("click", async () => {
+      if (!auth.isLoggedIn()) {
+        window.location.href = ui.pageUrl("pages/auth/login.html");
+        return;
+      }
+      try {
+        if (!isFavorited) {
+          await api.post(`/apps/${appId}/favorite`, {});
+          isFavorited = true;
+        } else {
+          await api.del(`/apps/${appId}/favorite`);
+          isFavorited = false;
+        }
+        loadApp();
+      } catch (err) {
+        if (err.status === 409) {
+          isFavorited = true;
+          loadApp();
+          return;
+        }
+        ui.toast(err.message || "Favorite failed", "error");
+      }
+    });
+  }
 }
 
 async function loadVersions() {
   const data = await api.get(`/apps/${appId}/versions`);
-  const items = data.items || data.versions || data.data || [];
-  if (!items.length) return ui.renderEmpty(versionList, "No versions yet.");
-  versionList.innerHTML = items.map(v => `
+  const items = Array.isArray(data) ? data : (data.items || data.versions || data.data || []);
+  const sorted = [...items].sort((a, b) => {
+    const aDate = new Date(a.releaseDate || a.createdAt || 0).getTime();
+    const bDate = new Date(b.releaseDate || b.createdAt || 0).getTime();
+    return bDate - aDate;
+  });
+  latestVersion = sorted[0] || null;
+  renderHeader();
+  if (!sorted.length) return ui.renderEmpty(versionList, "No versions yet.");
+  versionList.innerHTML = sorted.map(v => `
     <div class="card">
-      <h3>${escapeHtml(v.version)}</h3>
-      <p>${escapeHtml(v.changelog || "")}</p>
-      <div class="toolbar" style="margin-top: 10px;">
+      <div class="split-row">
+        <div>
+          <h3>${escapeHtml(v.version)}</h3>
+          <p>${escapeHtml(v.changelog || "")}</p>
+        </div>
         <span class="badge">${escapeHtml(v.fileSize || "")}</span>
+      </div>
+      <div class="toolbar" style="margin-top: 10px;">
         <span class="badge">${escapeHtml((v.supportedOs || []).join(", "))}</span>
+        ${v.downloadUrl ? `<button class="button secondary" data-download="${v.id}">Download APK</button>` : ""}
+        ${v.downloadUrl ? `<button class="button ghost" data-copy="${v.id}" data-url="${escapeHtml(v.downloadUrl)}">Copy link</button>` : ""}
       </div>
     </div>
   `).join("");
+
+  versionList.querySelectorAll("button[data-download]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const versionId = btn.dataset.download;
+      const match = sorted.find(item => String(item.id) === String(versionId));
+      if (!match?.downloadUrl) {
+        ui.toast("Download unavailable", "error");
+        return;
+      }
+      if (!auth.isLoggedIn()) {
+        window.location.href = ui.pageUrl("pages/auth/login.html");
+        return;
+      }
+      try {
+        const token = auth.getAccessToken();
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+        window.location.href = `${CONFIG.API_BASE_URL.replace(/\/$/, "")}/apps/${appId}/download/redirect?versionId=${match.id}${tokenParam}`;
+      } catch (err) {
+        ui.toast(err.message || "Download failed", "error");
+      }
+    });
+  });
+
+  versionList.querySelectorAll("button[data-copy]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const url = btn.dataset.url;
+      if (!url) return;
+      const copied = await copyToClipboard(url);
+      if (copied) {
+        ui.toast("Download link copied", "success");
+        return;
+      }
+      window.open(url, "_blank", "noopener");
+    });
+  });
 }
 
 async function loadReviews() {
   const data = await api.get(`/apps/${appId}/reviews`);
-  const items = data.items || data.reviews || data.data || [];
+  const items = Array.isArray(data) ? data : (data.items || data.reviews || data.data || []);
   if (!items.length) return ui.renderEmpty(reviewList, "No reviews yet.");
   reviewList.innerHTML = items.map(r => `
     <div class="card" style="margin-bottom: 12px;">
@@ -93,6 +187,7 @@ async function loadReviews() {
         <strong>${escapeHtml(r.title || "Review")}</strong>
         <span class="badge">${r.rating}/5</span>
       </div>
+      ${r.user?.name ? `<p class="muted">by ${escapeHtml(r.user.name)}</p>` : ""}
       <p>${escapeHtml(r.comment || "")}</p>
       <div class="toolbar">
         <button class="button ghost" data-edit="${r.id}">Edit</button>
@@ -184,6 +279,23 @@ function escapeHtml(text) {
   return String(text || "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
   })[c]);
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(String(text));
+      return true;
+    }
+  } catch {}
+  return false;
 }
 
 (async () => {
