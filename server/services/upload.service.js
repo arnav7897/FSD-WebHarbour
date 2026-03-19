@@ -7,7 +7,7 @@ const {
   CLOUDINARY_API_SECRET,
 } = require('../config/env');
 
-const uploadApk = async (filePath, originalName) => {
+const uploadZip = async (filePath, originalName) => {
   const baseName = path.basename(originalName || filePath);
   const localTargetDir = path.join(__dirname, '..', 'tmp', 'uploads');
   const localTargetPath = path.join(localTargetDir, `${Date.now()}-${baseName}`);
@@ -18,7 +18,7 @@ const uploadApk = async (filePath, originalName) => {
     try {
       const result = await cloudinary.uploader.upload(filePath, {
         resource_type: 'raw',
-        folder: 'webharbour/apks',
+        folder: 'webharbour/zips',
         use_filename: true,
         unique_filename: true,
         filename_override: baseName,
@@ -31,7 +31,8 @@ const uploadApk = async (filePath, originalName) => {
       };
     } catch (err) {
       // Cloudinary failed (often invalid cloud name); fallback to local file storage
-      console.warn('Cloudinary upload failed, falling back to local upload:', err?.message || err);
+      console.error("❌ CLOUDINARY FULL ERROR:", err);
+      throw err;
     }
   } else {
     console.warn('Cloudinary not configured, using local fallback upload');
@@ -48,5 +49,5 @@ const uploadApk = async (filePath, originalName) => {
 };
 
 module.exports = {
-  uploadApk,
+  uploadZip,
 };

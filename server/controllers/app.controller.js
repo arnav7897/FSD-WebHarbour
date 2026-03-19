@@ -8,7 +8,7 @@ const {
   listAppVersions,
   getVersionDownloadInfo,
 } = require('../services/app.service');
-const { uploadApk } = require('../services/upload.service');
+const { uploadZip } = require('../services/upload.service');
 const { createHttpError } = require('../middleware/error.middleware');
 const fs = require('fs');
 const { submitAppForReview } = require('../services/moderation.service');
@@ -99,17 +99,17 @@ const uploadAppVersionHandler = async (req, res, next) => {
   const file = req.file;
   try {
     if (!file) {
-      throw createHttpError(400, 'apk file is required');
+      throw createHttpError(400, 'zip file is required');
     }
     const { version, changelog, fileSize, supportedOs } = req.body || {};
     if (!version) {
       throw createHttpError(400, 'version is required');
     }
 
-    const uploadResult = await uploadApk(file.path, file.originalname);
+    const uploadResult = await uploadZip(file.path, file.originalname);
     const downloadUrl = uploadResult.url;
     if (!downloadUrl) {
-      throw createHttpError(500, 'APK uploaded but no download URL returned from Cloudinary.');
+      throw createHttpError(500, 'ZIP uploaded but no download URL returned from Cloudinary.');
     }
     const bytes = uploadResult.bytes || 0;
     const sizeLabel = fileSize || (bytes ? `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB` : '0 MB');

@@ -478,8 +478,8 @@ router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHan
  * /apps/{id}/versions/upload:
  *   post:
  *     tags: [Apps]
- *     summary: Upload APK and create a new app version
- *     description: Uploads APK to Cloudinary and creates an app version with the returned download URL.
+ *     summary: Upload ZIP and create a new app version
+ *     description: Uploads ZIP to Cloudinary and creates an app version with the returned download URL.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -494,9 +494,9 @@ router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHan
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [apk, version]
+ *             required: [zip, version]
  *             properties:
- *               apk:
+ *               zip:
  *                 type: string
  *                 format: binary
  *               version:
@@ -520,7 +520,7 @@ router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHan
  *       404:
  *         description: App not found
  */
-router.post('/:id/versions/upload', auth, requireRole('DEVELOPER'), upload.single('apk'), uploadAppVersionHandler);
+router.post('/:id/versions/upload', auth, requireRole('DEVELOPER'), upload.single('zip'), uploadAppVersionHandler);
 
 /**
  * @openapi

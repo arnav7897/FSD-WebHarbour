@@ -27,7 +27,7 @@ async function loadVersions() {
       <div class="toolbar" style="margin-top: 10px;">
         <span class="badge">${escapeHtml(v.fileSize || "")}</span>
         <span class="badge">${escapeHtml((v.supportedOs || []).join(", "))}</span>
-        ${v.downloadUrl ? `<button class="button secondary" data-download="${v.id}">Download APK</button>` : ""}
+        ${v.downloadUrl ? `<button class="button secondary" data-download="${v.id}">Download ZIP</button>` : ""}
         ${v.downloadUrl ? `<button class="button ghost" data-copy="${v.id}" data-url="${escapeHtml(v.downloadUrl)}">Copy link</button>` : ""}
       </div>
     </div>
@@ -69,21 +69,21 @@ async function handleVersionSubmit(e) {
   }
   try {
     const snapshot = Object.fromEntries(new FormData(versionForm));
-    const file = versionForm.querySelector("input[name='apk']")?.files?.[0];
-    setDebug({
-      event: "submit",
-      appId,
-      snapshot,
-      file: file ? { name: file.name, size: file.size, type: file.type } : null,
-    });
-  } catch {}
+    const file = versionForm.querySelector("input[name='zip']")?.files?.[0];
+    // setDebug({
+    //   event: "submit",
+    //   appId,
+    //   snapshot,
+    //   file: file ? { name: file.name, size: file.size, type: file.type } : null,
+    // });
+  } catch { }
   if (!appId) {
     ui.toast("Missing app id in URL", "error");
     setStatus("Missing app id in URL.", "error");
     return false;
   }
   const formData = new FormData(versionForm);
-  const file = formData.get("apk");
+  const file = formData.get("zip");
   const payload = {
     version: formData.get("version"),
     changelog: formData.get("changelog"),
@@ -103,7 +103,7 @@ async function handleVersionSubmit(e) {
     }
     if (file && file.name) {
       const uploadData = new FormData();
-      uploadData.append("apk", file);
+      uploadData.append("zip", file);
       uploadData.append("version", payload.version);
       if (payload.changelog) uploadData.append("changelog", payload.changelog);
       if (payload.fileSize) uploadData.append("fileSize", payload.fileSize);
@@ -115,12 +115,12 @@ async function handleVersionSubmit(e) {
         isForm: true,
       });
       setDebug(uploadResponse);
-      ui.toast("APK uploaded and version created", "success");
+      ui.toast("ZIP uploaded and version created", "success");
       const uploadUrl = uploadResponse?.uploadUrl || uploadResponse?.downloadUrl;
-      setStatus(uploadUrl ? `APK uploaded. URL: ${uploadUrl}` : "APK uploaded and version created.", "success");
+      setStatus(uploadUrl ? `ZIP uploaded. URL: ${uploadUrl}` : "ZIP uploaded and version created.", "success");
     } else {
       if (!payload.downloadUrl) {
-        throw { message: "Provide a download URL or upload an APK." };
+        throw { message: "Provide a download URL or upload a ZIP." };
       }
       const response = await debugRequest({
         path: `/apps/${appId}/versions`,
@@ -186,7 +186,7 @@ async function copyToClipboard(text) {
       await navigator.clipboard.writeText(String(text));
       return true;
     }
-  } catch {}
+  } catch { }
   return false;
 }
 

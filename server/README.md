@@ -40,7 +40,7 @@ npm test
 - `REFRESH_TOKEN_EXPIRES_IN` (default: `7d`)
 - `PASSWORD_RESET_TOKEN_EXPIRES_IN` (default: `15m`)
 - `AUTH_EXPOSE_DEBUG_TOKENS` (default: `true` in non-production)
-- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required for APK upload)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required for ZIP upload)
 - `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (optional seed config)
 
 ## Auth and Role Model
@@ -111,7 +111,7 @@ Common status codes:
 | `POST` | `/apps/:id/submit` | Bearer (`DEVELOPER`, owner) | Submit `DRAFT` app for moderation (`UNDER_REVIEW`) | Developer publishing workflow |
 | `POST` | `/apps/:id/publish` | Bearer (`DEVELOPER`, owner) | Deprecated direct publish endpoint (returns conflict) | Legacy only; do not use |
 | `POST` | `/apps/:id/versions` | Bearer (`DEVELOPER`, owner) | Create app version | Release management |
-| `POST` | `/apps/:id/versions/upload` | Bearer (`DEVELOPER`, owner) | Upload APK + create version | Release management |
+| `POST` | `/apps/:id/versions/upload` | Bearer (`DEVELOPER`, owner) | Upload ZIP + create version | Release management |
 | `GET` | `/apps/:id/versions` | No | List app versions | Version history UI |
 
 ### Tracking and Favorites
