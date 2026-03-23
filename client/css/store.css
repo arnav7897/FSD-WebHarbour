@@ -92,12 +92,12 @@ body.store-body {
 }
 
 .sidebar-header {
-  display: none;
+  display: grid;
   gap: 12px;
 }
 
 .sidebar-divider {
-  display: none;
+  display: block;
   height: 1px;
   background: var(--line);
 }
@@ -1096,8 +1096,7 @@ body:not([data-home="true"]) .app-label,
 body:not([data-home="true"]) .topbar-search,
 body:not([data-home="true"]) #themeToggle,
 body:not([data-home="true"]) .topbar-actions .logout-link,
-body:not([data-home="true"]) .sidebar-search,
-body:not([data-home="true"]) .sidebar-actions .logout-link {
+body:not([data-home="true"]) .sidebar-search {
   display: none !important;
 }
 
