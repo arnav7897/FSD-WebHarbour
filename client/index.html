@@ -1,120 +1,30 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
-  <title>WebHarbour</title>
-  <link rel="stylesheet" href="css/main.css" />
-</head>
-
-<body>
-  <div id="nav"></div>
-  <main class="container play-shell">
-    <section class="play-hero reveal">
-      <div class="play-hero-copy">
-        <p class="play-kicker">WebHarbour Store</p>
-        <h1>Find what fits your workflow today.</h1>
-        <p class="play-sub">Curated apps, trusted developers, and tools that ship faster. Explore releases, trending
-          picks, and editor spotlights.</p>
-        <div class="play-search">
-          <span class="play-search-icon" aria-hidden="true"></span>
-          <input class="input" type="search" placeholder="Search apps, tools, categories" />
-          <button class="button">Search</button>
-        </div>
-        <div class="play-tabs">
-          <button class="chip active">For you</button>
-          <button class="chip">Top charts</button>
-          <button class="chip">Categories</button>
-          <button class="chip">New & updated</button>
-          <button class="chip">Editors' picks</button>
-        </div>
-      </div>
-      <div class="play-hero-panel">
-        <div class="hero-card">
-          <p class="hero-label">Featured collection</p>
-          <h2>Build smarter with curated dev stacks</h2>
-          <p>Handpicked tools for design, shipping, and analytics. Updated weekly.</p>
-          <div class="toolbar">
-            <a class="button" href="pages/apps/index.html">Explore Marketplace</a>
-            <a class="button secondary" href="pages/auth/register.html">Create Account</a>
-            <a class="button ghost" href="pages/developer/dashboard.html">Developer Dashboard</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Recommended for you</h2>
-        <a class="link" href="pages/apps/index.html">See more</a>
-      </div>
-      <div class="play-row" id="recommendedRow">
-        <div class="empty">Loading apps...</div>
-      </div>
-    </section>
-
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Top charts</h2>
-        <span class="muted">Updated daily</span>
-      </div>
-      <div class="top-grid">
-        <ol class="top-list" id="topList">
-          <li class="top-item"><span class="rank">—</span>
-            <div class="app-meta">
-              <h3>Loading charts...</h3>
-            </div>
-          </li>
-        </ol>
-        <div class="top-card" id="topHighlight">
-          <p class="hero-label">Chart climber</p>
-          <h3>Loading...</h3>
-          <p>Fetching the latest published apps.</p>
-          <div class="toolbar">
-            <button class="button" disabled>Install</button>
-            <button class="button secondary" disabled>Details</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Browse categories</h2>
-        <a class="link" href="pages/apps/index.html">All categories</a>
-      </div>
-      <div class="chip-grid">
-        <button class="chip">Productivity</button>
-        <button class="chip">Developer Tools</button>
-        <button class="chip">Design</button>
-        <button class="chip">AI & Automation</button>
-        <button class="chip">Security</button>
-        <button class="chip">Utilities</button>
-        <button class="chip">Education</button>
-        <button class="chip">Business</button>
-      </div>
-    </section>
-
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">New & updated</h2>
-        <a class="link" href="pages/apps/index.html">Release notes</a>
-      </div>
-      <div class="play-row" id="newRow">
-        <div class="empty">Loading updates...</div>
-      </div>
-    </section>
-  </main>
-
-  <script src="js/config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/nav.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/pages/home.js"></script>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebHarbour Marketplace</title>
+    <meta
+      name="description"
+      content="WebHarbour is a modern app marketplace for discovering trusted software, tools, and developer-ready products."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <div class="app-backdrop" aria-hidden="true">
+      <div class="backdrop-orb orb-one"></div>
+      <div class="backdrop-orb orb-two"></div>
+      <div class="backdrop-grid"></div>
+    </div>
+    <div id="app"></div>
+    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+    <div id="modal-root"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
 </html>
