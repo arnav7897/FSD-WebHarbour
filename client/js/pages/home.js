@@ -114,12 +114,21 @@
     container.appendChild(empty);
   };
 
+  const extractList = (payload, key) => {
+    const value = payload ? payload[key] : null;
+    if (Array.isArray(value)) return value;
+    if (value && Array.isArray(value.items)) return value.items;
+    return [];
+  };
+
   const loadApps = async () => {
     try {
-      const data = await api.get("/apps?limit=18");
-      const items = Array.isArray(data?.items) ? data.items : [];
+      const data = await api.get("/recommendations/home?recommendedLimit=6&chartLimit=3&updateLimit=6");
+      const recommended = extractList(data, "recommended");
+      const charts = extractList(data, "charts");
+      const updates = extractList(data, "updates");
 
-      if (!items.length) {
+      if (!recommended.length && !charts.length && !updates.length) {
         renderEmpty(recommendedRow, "No published apps yet.");
         renderEmpty(newRow, "No updates yet.");
         renderEmpty(topList, "No charts to show yet.");
@@ -127,19 +136,28 @@
         return;
       }
 
-      const recommended = items.slice(0, 6);
-      const charts = items.slice(0, 3);
-      const updates = items.slice(6, 12);
-
       recommendedRow.innerHTML = "";
-      recommended.forEach((app) => recommendedRow.appendChild(renderAppCard(app)));
+      if (!recommended.length) {
+        renderEmpty(recommendedRow, "No recommendations yet.");
+      } else {
+        recommended.forEach((app) => recommendedRow.appendChild(renderAppCard(app)));
+      }
 
       topList.innerHTML = "";
-      charts.forEach((app, index) => topList.appendChild(renderTopItem(app, index + 1)));
-      renderHighlight(charts[0]);
+      if (!charts.length) {
+        renderEmpty(topList, "No charts to show yet.");
+        renderHighlight(null);
+      } else {
+        charts.forEach((app, index) => topList.appendChild(renderTopItem(app, index + 1)));
+        renderHighlight(charts[0]);
+      }
 
       newRow.innerHTML = "";
-      updates.forEach((app) => newRow.appendChild(renderAppCard(app, true)));
+      if (!updates.length) {
+        renderEmpty(newRow, "No updates yet.");
+      } else {
+        updates.forEach((app) => newRow.appendChild(renderAppCard(app, true)));
+      }
     } catch (err) {
       renderEmpty(recommendedRow, "Unable to load apps.");
       renderEmpty(newRow, "Unable to load updates.");

@@ -15,6 +15,7 @@ const adminRoutes = require('../routes/admin.routes');
 const userRoutes = require('../routes/user.auth');
 const reportRoutes = require('../routes/report.routes');
 const developerRoutes = require('../routes/developer.routes');
+const recommendationRoutes = require('../routes/recommendation.routes');
 const { notFoundHandler, errorHandler } = require('../middleware/error.middleware');
 
 const app = express();
@@ -169,6 +170,7 @@ app.use('/reports', reportRoutes);
 app.use('/admin', adminRoutes);
 app.use('/users', userRoutes);
 app.use('/developer', developerRoutes);
+app.use('/recommendations', recommendationRoutes);
 app.use('/', catalogRoutes);
 
 app.use(notFoundHandler);
