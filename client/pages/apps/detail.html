@@ -6,56 +6,205 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>App Detail - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
 </head>
-<body>
-  <div id="nav"></div>
-  <main class="container">
-    <div id="appHeader" class="card"></div>
-
-    <section style="margin-top: 24px;">
-      <h2 class="section-title">Versions</h2>
-      <div id="versionList" class="grid grid-2"></div>
-    </section>
-
-    <section style="margin-top: 24px;">
-      <h2 class="section-title">Reviews</h2>
-      <div class="card" style="margin-bottom: 16px;">
-        <form id="reviewForm">
-          <div class="form-row">
-            <label>Rating (1-5)</label>
-            <input class="input" type="number" name="rating" min="1" max="5" required />
-          </div>
-          <div class="form-row">
-            <label>Title</label>
-            <input class="input" type="text" name="title" />
-          </div>
-          <div class="form-row">
-            <label>Comment</label>
-            <textarea class="input" name="comment"></textarea>
-          </div>
-          <button class="button" type="submit">Submit review</button>
-        </form>
+<body class="store-body">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item" href="../../index.html">Home</a>
+          <a class="sidebar-item is-active" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item" data-role="DEVELOPER" href="../../pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
+        </div>
       </div>
-      <div id="reviewList"></div>
-    </section>
+    </aside>
 
-    <section style="margin-top: 24px;">
-      <h2 class="section-title">Report this app</h2>
-      <div class="card">
-        <form id="reportForm">
-          <div class="form-row">
-            <label>Reason</label>
-            <input class="input" type="text" name="reason" required />
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <h1 class="hero-title">Find trusted apps, tools, and releases.</h1>
+          <p class="hero-sub">Browse curated collections, chart toppers, and the newest releases across the WebHarbour store.</p>
+          <div class="hero-search">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input class="input" type="search" placeholder="Search for productivity, design, dev tools..." />
+            <button class="button">Search</button>
           </div>
-          <div class="form-row">
-            <label>Description</label>
-            <textarea class="input" name="description"></textarea>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-icon">C</div>
+              <h3>Curated</h3>
+              <p>Handpicked apps from trusted creators to keep your workflow sharp.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-icon">T</div>
+              <h3>Trusted</h3>
+              <p>Verified developers, transparent reviews, and secure releases.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-icon">F</div>
+              <h3>Fast</h3>
+              <p>Instant access to the latest versions and curated update notes.</p>
+            </article>
           </div>
-          <button class="button danger" type="submit">Report</button>
-        </form>
-      </div>
-    </section>
-  </main>
+        </section>
+
+        <section class="store-section fade-up delay-2">
+          <div class="section-head">
+            <h2 class="section-title">Browse categories</h2>
+            <span class="muted">Pick a focus to explore.</span>
+          </div>
+          <div class="category-grid">
+            <button class="category-pill">Productivity</button>
+            <button class="category-pill">Developer Tools</button>
+            <button class="category-pill">Design</button>
+            <button class="category-pill">AI & Automation</button>
+            <button class="category-pill">Security</button>
+            <button class="category-pill">Utilities</button>
+            <button class="category-pill">Education</button>
+            <button class="category-pill">Business</button>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-3">
+          <div class="section-head">
+            <h2 class="section-title">App details</h2>
+            <span class="muted">Release info and actions.</span>
+          </div>
+          <div id="appHeader" class="card" aria-busy="true">
+            <div class="skeleton-line lg skeleton"></div>
+            <div class="skeleton-line md skeleton"></div>
+            <div class="skeleton-line sm skeleton"></div>
+            <div class="skeleton-row">
+              <div class="skeleton-pill skeleton"></div>
+              <div class="skeleton-pill skeleton"></div>
+              <div class="skeleton-pill skeleton"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-4">
+          <div class="section-head">
+            <h2 class="section-title">Screenshots</h2>
+            <span class="muted">Preview the app in action.</span>
+          </div>
+          <div id="screenshotGrid" class="screenshot-grid" aria-busy="true">
+            <div class="skeleton-card">
+              <div class="skeleton-line lg skeleton"></div>
+              <div class="skeleton-line md skeleton"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-5">
+          <div class="section-head">
+            <h2 class="section-title">Versions</h2>
+            <span class="muted">Latest updates and releases.</span>
+          </div>
+          <div id="versionList" class="grid grid-2" aria-busy="true">
+            <div class="card skeleton-card">
+              <div class="skeleton-line lg skeleton"></div>
+              <div class="skeleton-line md skeleton"></div>
+              <div class="skeleton-row">
+                <div class="skeleton-pill skeleton"></div>
+                <div class="skeleton-pill skeleton"></div>
+              </div>
+            </div>
+            <div class="card skeleton-card">
+              <div class="skeleton-line lg skeleton"></div>
+              <div class="skeleton-line md skeleton"></div>
+              <div class="skeleton-row">
+                <div class="skeleton-pill skeleton"></div>
+                <div class="skeleton-pill skeleton"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-5">
+          <div class="section-head">
+            <h2 class="section-title">Reviews</h2>
+            <span class="muted">Share your experience.</span>
+          </div>
+          <div class="card">
+            <form id="reviewForm">
+              <div class="form-row">
+                <label>Rating (1-5)</label>
+                <input class="input" type="number" name="rating" min="1" max="5" required />
+              </div>
+              <div class="form-row">
+                <label>Title</label>
+                <input class="input" type="text" name="title" />
+              </div>
+              <div class="form-row">
+                <label>Comment</label>
+                <textarea class="input" name="comment"></textarea>
+              </div>
+              <button class="button" type="submit">Submit review</button>
+            </form>
+          </div>
+          <div id="reviewList" aria-busy="true">
+            <div class="card skeleton-card">
+              <div class="skeleton-line lg skeleton"></div>
+              <div class="skeleton-line md skeleton"></div>
+              <div class="skeleton-line sm skeleton"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-5">
+          <div class="section-head">
+            <h2 class="section-title">Report this app</h2>
+            <span class="muted">Flag issues for review.</span>
+          </div>
+          <div class="card">
+            <form id="reportForm">
+              <div class="form-row">
+                <label>Reason</label>
+                <input class="input" type="text" name="reason" required />
+              </div>
+              <div class="form-row">
+                <label>Description</label>
+                <textarea class="input" name="description"></textarea>
+              </div>
+              <button class="button danger" type="submit">Report</button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
 
   <script src="../../js/config.js"></script>
   <script src="../../js/api.js"></script>
@@ -63,7 +212,9 @@
   <script src="../../js/ui.js"></script>
   <script src="../../js/nav.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
   <script src="../../js/pages/apps/detail.js"></script>
 </body>
 </html>
+
 

@@ -6,45 +6,104 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>Versions - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
 </head>
-<body data-requires-role="DEVELOPER">
-  <div id="nav"></div>
-  <main class="container">
-    <h2 class="section-title">Version Management</h2>
-    <div id="versionStatus" class="empty" style="margin-bottom: 16px;">Loading version tools...</div>
-    <div class="card" style="margin-bottom: 24px;">
-      <form id="versionForm">
-        <div class="form-row">
-          <label>Version</label>
-          <input class="input" type="text" name="version" required />
+<body class="store-body" data-requires-role="DEVELOPER">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item" href="../../index.html">Home</a>
+          <a class="sidebar-item" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
         </div>
-        <div class="form-row">
-          <label>Changelog</label>
-          <textarea class="input" name="changelog"></textarea>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item is-active" data-role="DEVELOPER" href="../../pages/developer/versions.html">Developer</a>
         </div>
-        <div class="form-row">
-          <label>Download URL (optional if uploading ZIP)</label>
-          <input class="input" type="url" name="downloadUrl" />
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
         </div>
-        <div class="form-row">
-          <label>ZIP File</label>
-          <input class="input" type="file" name="zip" accept=".zip,application/zip" />
-        </div>
-        <div class="form-row">
-          <label>File size</label>
-          <input class="input" type="text" name="fileSize" placeholder="52 MB" />
-        </div>
-        <div class="form-row">
-          <label>Supported OS (comma separated)</label>
-          <input class="input" type="text" name="supportedOs" placeholder="WEB,WINDOWS,MACOS" />
-        </div>
-        <button class="button" type="submit" id="submitVersion">Add version</button>
-      </form>
-    </div>
+      </div>
+    </aside>
 
-    <div id="versionList" class="grid grid-2"></div>
-    <pre id="versionDebug" class="card" style="margin-top: 16px;"></pre>
-  </main>
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Versions</span>
+          <h1 class="hero-title">Ship releases with confidence.</h1>
+          <p class="hero-sub">Upload new builds, document changes, and keep versions organized.</p>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="section-head">
+            <h2 class="section-title">Version Management</h2>
+            <span class="muted">Add new versions and upload builds.</span>
+          </div>
+          <div id="versionStatus" class="empty">Loading version tools...</div>
+          <div class="card">
+            <form id="versionForm">
+              <div class="form-row">
+                <label>Version</label>
+                <input class="input" type="text" name="version" required />
+              </div>
+              <div class="form-row">
+                <label>Changelog</label>
+                <textarea class="input" name="changelog"></textarea>
+              </div>
+              <div class="form-row">
+                <label>Download URL (optional if uploading ZIP)</label>
+                <input class="input" type="url" name="downloadUrl" />
+              </div>
+              <div class="form-row">
+                <label>ZIP File</label>
+                <input class="input" type="file" name="zip" accept=".zip,application/zip" />
+              </div>
+              <div class="form-row">
+                <label>File size</label>
+                <input class="input" type="text" name="fileSize" placeholder="52 MB" />
+              </div>
+              <div class="form-row">
+                <label>Supported OS (comma separated)</label>
+                <input class="input" type="text" name="supportedOs" placeholder="WEB,WINDOWS,MACOS" />
+              </div>
+              <button class="button" type="submit" id="submitVersion">Add version</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-2">
+          <div class="section-head">
+            <h2 class="section-title">Version history</h2>
+            <span class="muted">Track uploaded releases.</span>
+          </div>
+          <div id="versionList" class="grid grid-2"></div>
+          <pre id="versionDebug" class="card"></pre>
+        </section>
+      </main>
+    </div>
+  </div>
 
   <script src="../../js/config.js"></script>
   <script src="../../js/api.js"></script>
@@ -52,7 +111,9 @@
   <script src="../../js/ui.js"></script>
   <script src="../../js/nav.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
   <script src="../../js/pages/developer/versions.js"></script>
 </body>
 </html>
+
 

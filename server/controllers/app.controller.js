@@ -3,12 +3,13 @@ const {
   listApps,
   getAppById,
   updateApp,
+  updateAppMedia,
   publishApp,
   createAppVersion,
   listAppVersions,
   getVersionDownloadInfo,
 } = require('../services/app.service');
-const { uploadZip } = require('../services/upload.service');
+const { uploadZip, uploadImage } = require('../services/upload.service');
 const { createHttpError } = require('../middleware/error.middleware');
 const fs = require('fs');
 const { submitAppForReview } = require('../services/moderation.service');
@@ -52,6 +53,88 @@ const updateAppHandler = async (req, res, next) => {
     return res.json(app);
   } catch (err) {
     return next(err);
+  }
+};
+
+const uploadAppMediaHandler = async (req, res, next) => {
+  const files = req.files || {};
+  const iconFile = files.icon?.[0];
+  const bannerFile = files.banner?.[0];
+  const screenshotFiles = files.screenshots || [];
+
+  const allFiles = [iconFile, bannerFile, ...screenshotFiles].filter(Boolean);
+
+  const ensureImageFile = (file) => {
+    if (!file) return;
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      throw createHttpError(400, 'Only image uploads are allowed');
+    }
+  };
+
+  try {
+    if (!allFiles.length) {
+      throw createHttpError(400, 'At least one media file is required');
+    }
+
+    allFiles.forEach(ensureImageFile);
+
+    const mode = String(req.body?.mode || req.query?.mode || '').toLowerCase();
+    const screenshotMode = mode === 'replace' ? 'replace' : 'append';
+
+    let iconUrl;
+    let bannerUrl;
+    let screenshotUrls;
+
+    if (iconFile) {
+      const result = await uploadImage(iconFile.path, iconFile.originalname, {
+        folder: 'webharbour/apps/icons',
+      });
+      iconUrl = result.url;
+    }
+
+    if (bannerFile) {
+      const result = await uploadImage(bannerFile.path, bannerFile.originalname, {
+        folder: 'webharbour/apps/banners',
+      });
+      bannerUrl = result.url;
+    }
+
+    if (screenshotFiles.length) {
+      const results = await Promise.all(
+        screenshotFiles.map((file) =>
+          uploadImage(file.path, file.originalname, {
+            folder: 'webharbour/apps/screenshots',
+          }),
+        ),
+      );
+      screenshotUrls = results.map((result) => result.url).filter(Boolean);
+    }
+
+    const updated = await updateAppMedia({
+      appId: req.params.id,
+      userId: req.user.id,
+      iconUrl,
+      bannerUrl,
+      screenshotUrls,
+      screenshotMode,
+    });
+
+    return res.json({
+      ...updated,
+      uploaded: {
+        iconUrl: iconUrl || null,
+        bannerUrl: bannerUrl || null,
+        screenshots: screenshotUrls || [],
+      },
+    });
+  } catch (err) {
+    return next(err);
+  } finally {
+    allFiles.forEach((file) => {
+      if (file?.path) {
+        fs.unlink(file.path, () => { });
+      }
+    });
   }
 };
 
@@ -221,6 +304,7 @@ module.exports = {
   listAppsHandler,
   getAppByIdHandler,
   updateAppHandler,
+  uploadAppMediaHandler,
   publishAppHandler,
   submitAppHandler,
   createAppVersionHandler,

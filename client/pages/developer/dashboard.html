@@ -6,58 +6,113 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>Developer Dashboard - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
 </head>
-<body data-requires-role="DEVELOPER">
-  <div id="nav"></div>
-  <main class="container">
-    <div class="toolbar" style="justify-content: space-between;">
-      <h2 class="section-title">Developer Dashboard</h2>
-      <div class="toolbar">
-        <span id="devStatusText" class="muted"></span>
-        <button class="button" id="becomeDev">Request Developer Access</button>
-        <button class="button secondary hidden" id="refreshDev">Refresh Session</button>
+<body class="store-body" data-requires-role="DEVELOPER">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item" href="../../index.html">Home</a>
+          <a class="sidebar-item" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item is-active" data-role="DEVELOPER" href="../../pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
+        </div>
       </div>
+    </aside>
+
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Developer</span>
+          <h1 class="hero-title">Build and manage your apps.</h1>
+          <p class="hero-sub">Create new listings, track app status, and keep releases organized.</p>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="section-head">
+            <h2 class="section-title">Developer Dashboard</h2>
+            <div class="toolbar">
+              <span id="devStatusText" class="muted"></span>
+              <button class="button" id="becomeDev">Request Developer Access</button>
+              <button class="button secondary hidden" id="refreshDev">Refresh Session</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-2">
+          <div class="card">
+            <h3>Create App</h3>
+            <form id="createAppForm">
+              <div class="form-row">
+                <label>Name</label>
+                <input class="input" type="text" name="name" required />
+              </div>
+              <div class="form-row">
+                <label>Description</label>
+                <textarea class="input" name="description" required></textarea>
+              </div>
+              <div class="form-row">
+                <label>Category</label>
+                <select id="categorySelect" name="categoryId" required></select>
+              </div>
+              <div class="form-row">
+                <label>Tags (comma separated IDs)</label>
+                <input class="input" type="text" name="tags" placeholder="1,2,3" />
+              </div>
+              <button class="button" type="submit">Create</button>
+              <p class="muted" style="margin-top: 10px;">After creating, use Edit to upload icon, banner, and screenshots.</p>
+            </form>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-3">
+          <div class="section-head">
+            <h2 class="section-title">Apps (status filter)</h2>
+            <div class="toolbar">
+              <select id="statusFilter">
+                <option value="">All</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+                <option value="PUBLISHED">PUBLISHED</option>
+                <option value="REJECTED">REJECTED</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+              </select>
+              <button class="button secondary" id="reloadApps">Load</button>
+            </div>
+          </div>
+          <div id="appsGrid" class="grid grid-3"></div>
+        </section>
+      </main>
     </div>
-
-    <section class="card" style="margin-bottom: 24px;">
-      <h3>Create App</h3>
-      <form id="createAppForm">
-        <div class="form-row">
-          <label>Name</label>
-          <input class="input" type="text" name="name" required />
-        </div>
-        <div class="form-row">
-          <label>Description</label>
-          <textarea class="input" name="description" required></textarea>
-        </div>
-        <div class="form-row">
-          <label>Category</label>
-          <select id="categorySelect" name="categoryId" required></select>
-        </div>
-        <div class="form-row">
-          <label>Tags (comma separated IDs)</label>
-          <input class="input" type="text" name="tags" placeholder="1,2,3" />
-        </div>
-        <button class="button" type="submit">Create</button>
-      </form>
-    </section>
-
-    <section>
-      <h3>Apps (status filter)</h3>
-      <div class="toolbar">
-        <select id="statusFilter">
-          <option value="">All</option>
-          <option value="DRAFT">DRAFT</option>
-          <option value="UNDER_REVIEW">UNDER_REVIEW</option>
-          <option value="PUBLISHED">PUBLISHED</option>
-          <option value="REJECTED">REJECTED</option>
-          <option value="SUSPENDED">SUSPENDED</option>
-        </select>
-        <button class="button secondary" id="reloadApps">Load</button>
-      </div>
-      <div id="appsGrid" class="grid grid-3"></div>
-    </section>
-  </main>
+  </div>
 
   <script src="../../js/config.js"></script>
   <script src="../../js/api.js"></script>
@@ -65,7 +120,9 @@
   <script src="../../js/ui.js"></script>
   <script src="../../js/nav.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
   <script src="../../js/pages/developer/dashboard.js"></script>
 </body>
 </html>
+
 

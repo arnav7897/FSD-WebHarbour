@@ -7,6 +7,7 @@ const {
   listAppsHandler,
   getAppByIdHandler,
   updateAppHandler,
+  uploadAppMediaHandler,
   publishAppHandler,
   submitAppHandler,
   createAppVersionHandler,
@@ -174,6 +175,10 @@ router.get('/:id', getAppByIdHandler);
  *                 type: string
  *                 description: New app title.
  *                 example: Notion Theme Pack Pro
+ *               shortDescription:
+ *                 type: string
+ *                 description: Optional short summary for cards.
+ *                 example: Clean templates for focused teams.
  *               description:
  *                 type: string
  *                 description: Updated app description text.
@@ -181,6 +186,17 @@ router.get('/:id', getAppByIdHandler);
  *                 type: integer
  *                 description: New primary category ID.
  *                 example: 4
+ *               iconUrl:
+ *                 type: string
+ *                 description: URL for the app icon image.
+ *               bannerUrl:
+ *                 type: string
+ *                 description: URL for the app banner image.
+ *               screenshots:
+ *                 type: array
+ *                 description: Full list of screenshot URLs (replaces existing).
+ *                 items:
+ *                   type: string
  *               tags:
  *                 type: array
  *                 description: New full list of secondary tag IDs.
@@ -203,6 +219,73 @@ router.get('/:id', getAppByIdHandler);
  *         description: App not found
  */
 router.patch('/:id', auth, requireRole('DEVELOPER'), updateAppHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/media:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Upload app media (icon, banner, screenshots)
+ *     description: Uploads images to Cloudinary and updates the app media fields.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: mode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [append, replace]
+ *         description: Screenshot mode. append adds to existing screenshots, replace overwrites.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               icon:
+ *                 type: string
+ *                 format: binary
+ *               banner:
+ *                 type: string
+ *                 format: binary
+ *               screenshots:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *               mode:
+ *                 type: string
+ *                 enum: [append, replace]
+ *     responses:
+ *       200:
+ *         description: Media uploaded
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: App not found
+ */
+router.post(
+  '/:id/media',
+  auth,
+  requireRole('DEVELOPER'),
+  upload.fields([
+    { name: 'icon', maxCount: 1 },
+    { name: 'banner', maxCount: 1 },
+    { name: 'screenshots', maxCount: 12 },
+  ]),
+  uploadAppMediaHandler,
+);
 
 /**
  * @openapi

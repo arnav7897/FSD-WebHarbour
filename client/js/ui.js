@@ -32,5 +32,16 @@ const ui = (() => {
     return `${basePrefix()}${path}`;
   }
 
-  return { toast, setLoading, renderEmpty, pageUrl, basePrefix };
+  function assetUrl(url) {
+    if (!url) return "";
+    const trimmed = String(url).trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith("/")) {
+      return `${CONFIG.API_BASE_URL.replace(/\/$/, "")}${trimmed}`;
+    }
+    return trimmed;
+  }
+
+  return { toast, setLoading, renderEmpty, pageUrl, basePrefix, assetUrl };
 })();

@@ -26,13 +26,27 @@
 
   const pickGradient = (name) => gradients[hash(String(name || "")) % gradients.length];
 
+  const buildIcon = (app) => {
+    const icon = document.createElement("div");
+    icon.className = `app-icon ${pickGradient(app.name)}`;
+    if (app.iconUrl) {
+      icon.classList.add("has-image");
+      const img = document.createElement("img");
+      img.src = ui.assetUrl(app.iconUrl);
+      img.alt = `${app.name} icon`;
+      img.loading = "lazy";
+      icon.appendChild(img);
+      return icon;
+    }
+    icon.textContent = initials(app.name);
+    return icon;
+  };
+
   const renderAppCard = (app, wide = false) => {
     const card = document.createElement("a");
     card.className = `app-card${wide ? " wide" : ""}`;
     card.href = ui.pageUrl(`pages/apps/detail.html?id=${app.id}`);
-    const icon = document.createElement("div");
-    icon.className = `app-icon ${pickGradient(app.name)}`;
-    icon.textContent = initials(app.name);
+    const icon = buildIcon(app);
 
     const meta = document.createElement("div");
     meta.className = "app-meta";
@@ -56,9 +70,7 @@
     rankEl.className = "rank";
     rankEl.textContent = String(rank);
 
-    const icon = document.createElement("div");
-    icon.className = `app-icon ${pickGradient(app.name)}`;
-    icon.textContent = initials(app.name);
+    const icon = buildIcon(app);
 
     const meta = document.createElement("div");
     meta.className = "app-meta";
@@ -120,6 +132,39 @@
     if (value && Array.isArray(value.items)) return value.items;
     return [];
   };
+
+  const goSearch = (value) => {
+    const query = String(value || "").trim();
+    if (!query) return;
+    const url = ui.pageUrl(`pages/apps/index.html?q=${encodeURIComponent(query)}`);
+    window.location.href = url;
+  };
+
+  const heroSearchInput = document.querySelector(".hero-search .input");
+  const heroSearchButton = document.querySelector(".hero-search .button");
+  if (heroSearchInput) {
+    heroSearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        goSearch(heroSearchInput.value);
+      }
+    });
+  }
+  if (heroSearchButton) {
+    heroSearchButton.addEventListener("click", () => {
+      goSearch(heroSearchInput ? heroSearchInput.value : "");
+    });
+  }
+
+  const topbarSearchInput = document.querySelector(".topbar-search .input");
+  if (topbarSearchInput) {
+    topbarSearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        goSearch(topbarSearchInput.value);
+      }
+    });
+  }
 
   const loadApps = async () => {
     try {

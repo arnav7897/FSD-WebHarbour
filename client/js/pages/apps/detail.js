@@ -3,12 +3,33 @@ const versionList = document.getElementById("versionList");
 const reviewList = document.getElementById("reviewList");
 const reviewForm = document.getElementById("reviewForm");
 const reportForm = document.getElementById("reportForm");
+const screenshotGrid = document.getElementById("screenshotGrid");
 
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("id");
 let isFavorited = false;
 let latestVersion = null;
 let currentApp = null;
+
+const gradients = ["grad-a", "grad-b", "grad-c", "grad-d", "grad-e"];
+
+const hash = (value) => {
+  let out = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    out = (out << 5) - out + value.charCodeAt(i);
+    out |= 0;
+  }
+  return Math.abs(out);
+};
+
+const initials = (name) => {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "APP";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const pickGradient = (name) => gradients[hash(String(name || "")) % gradients.length];
 
 function requireAppId() {
   if (!appId) {
@@ -21,6 +42,7 @@ async function loadApp() {
   const app = await api.get(`/apps/${appId}`);
   currentApp = app;
   renderHeader();
+  renderScreenshots();
 }
 
 function renderHeader() {
@@ -34,10 +56,24 @@ function renderHeader() {
     ? `<p class="muted">Latest release: ${escapeHtml(latestVersion.version)}${sizeLabel}${releaseDate ? ` · ${releaseDate}` : ""}</p>`
     : `<p class="muted">No downloadable version yet.</p>`;
 
+  const iconMarkup = currentApp.iconUrl
+    ? `<div class="app-icon lg has-image"><img src="${escapeHtml(ui.assetUrl(currentApp.iconUrl))}" alt="${escapeHtml(currentApp.name)} icon" loading="lazy" /></div>`
+    : `<div class="app-icon lg ${pickGradient(currentApp.name)}">${escapeHtml(initials(currentApp.name))}</div>`;
+
+  const bannerMarkup = currentApp.bannerUrl
+    ? `<div class="app-banner"><img src="${escapeHtml(ui.assetUrl(currentApp.bannerUrl))}" alt="${escapeHtml(currentApp.name)} banner" loading="lazy" /></div>`
+    : "";
+
   appHeader.innerHTML = `
-    <h2 class="section-title">${escapeHtml(currentApp.name)}</h2>
-    <p>${escapeHtml(currentApp.description || "")}</p>
-    ${versionMeta}
+    ${bannerMarkup}
+    <div class="app-header">
+      ${iconMarkup}
+      <div>
+        <h2 class="section-title">${escapeHtml(currentApp.name)}</h2>
+        <p>${escapeHtml(currentApp.description || "")}</p>
+        ${versionMeta}
+      </div>
+    </div>
     <div class="toolbar" style="margin-top: 12px;">
       <span class="badge">${currentApp.status || "PUBLISHED"}</span>
       <button class="button" id="downloadBtn" ${!hasDownload || !isAuthed ? "disabled" : ""}>${downloadLabel}</button>
@@ -46,6 +82,7 @@ function renderHeader() {
     </div>
     ${!isAuthed ? `<p class="muted">Login to track downloads or favorite this app.</p>` : ""}
   `;
+  appHeader.removeAttribute("aria-busy");
 
   const downloadBtn = document.getElementById("downloadBtn");
   const linkBtn = document.getElementById("linkBtn");
@@ -113,6 +150,21 @@ function renderHeader() {
   }
 }
 
+function renderScreenshots() {
+  if (!screenshotGrid) return;
+  const items = Array.isArray(currentApp?.screenshots) ? currentApp.screenshots : [];
+  if (!items.length) {
+    screenshotGrid.removeAttribute("aria-busy");
+    return ui.renderEmpty(screenshotGrid, "No screenshots uploaded yet.");
+  }
+  screenshotGrid.innerHTML = items.map((url, index) => `
+    <div class="screenshot-card">
+      <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(currentApp?.name || "App")} screenshot ${index + 1}" loading="lazy" />
+    </div>
+  `).join("");
+  screenshotGrid.removeAttribute("aria-busy");
+}
+
 async function loadVersions() {
   const data = await api.get(`/apps/${appId}/versions`);
   const items = Array.isArray(data) ? data : (data.items || data.versions || data.data || []);
@@ -123,7 +175,10 @@ async function loadVersions() {
   });
   latestVersion = sorted[0] || null;
   renderHeader();
-  if (!sorted.length) return ui.renderEmpty(versionList, "No versions yet.");
+  if (!sorted.length) {
+    versionList.removeAttribute("aria-busy");
+    return ui.renderEmpty(versionList, "No versions yet.");
+  }
   versionList.innerHTML = sorted.map(v => `
     <div class="card">
       <div class="split-row">
@@ -140,6 +195,7 @@ async function loadVersions() {
       </div>
     </div>
   `).join("");
+  versionList.removeAttribute("aria-busy");
 
   versionList.querySelectorAll("button[data-download]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -180,7 +236,10 @@ async function loadVersions() {
 async function loadReviews() {
   const data = await api.get(`/apps/${appId}/reviews`);
   const items = Array.isArray(data) ? data : (data.items || data.reviews || data.data || []);
-  if (!items.length) return ui.renderEmpty(reviewList, "No reviews yet.");
+  if (!items.length) {
+    reviewList.removeAttribute("aria-busy");
+    return ui.renderEmpty(reviewList, "No reviews yet.");
+  }
   reviewList.innerHTML = items.map(r => `
     <div class="card" style="margin-bottom: 12px;">
       <div class="toolbar" style="justify-content: space-between;">
@@ -195,6 +254,7 @@ async function loadReviews() {
       </div>
     </div>
   `).join("");
+  reviewList.removeAttribute("aria-busy");
 
   reviewList.querySelectorAll("button[data-delete]").forEach(btn => {
     btn.addEventListener("click", async () => {

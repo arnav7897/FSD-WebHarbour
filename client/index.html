@@ -4,109 +4,152 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>WebHarbour</title>
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/store.css" />
 </head>
 
-<body>
-  <div id="nav"></div>
-  <main class="container play-shell">
-    <section class="play-hero reveal">
-      <div class="play-hero-copy">
-        <p class="play-kicker">WebHarbour Store</p>
-        <h1>Find what fits your workflow today.</h1>
-        <p class="play-sub">Curated apps, trusted developers, and tools that ship faster. Explore releases, trending
-          picks, and editor spotlights.</p>
-        <div class="play-search">
-          <span class="play-search-icon" aria-hidden="true"></span>
+<body class="store-body" data-home="true">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item is-active" href="index.html">Home</a>
+          <a class="sidebar-item" href="pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="pages/user/favorites.html">Library</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item" data-role="DEVELOPER" href="pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="pages/admin/moderation.html">Admin</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
           <input class="input" type="search" placeholder="Search apps, tools, categories" />
-          <button class="button">Search</button>
         </div>
-        <div class="play-tabs">
-          <button class="chip active">For you</button>
-          <button class="chip">Top charts</button>
-          <button class="chip">Categories</button>
-          <button class="chip">New & updated</button>
-          <button class="chip">Editors' picks</button>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#"
+            id="logoutLink">Logout</a>
         </div>
-      </div>
-      <div class="play-hero-panel">
-        <div class="hero-card">
-          <p class="hero-label">Featured collection</p>
-          <h2>Build smarter with curated dev stacks</h2>
-          <p>Handpicked tools for design, shipping, and analytics. Updated weekly.</p>
-          <div class="toolbar">
-            <a class="button" href="pages/apps/index.html">Explore Marketplace</a>
-            <a class="button secondary" href="pages/auth/register.html">Create Account</a>
-            <a class="button ghost" href="pages/developer/dashboard.html">Developer Dashboard</a>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Apps for every workflow</span>
+          <h1 class="hero-title">Find trusted apps, tools, and releases.</h1>
+          <p class="hero-sub">Curated collections, trusted developers, and tools that ship faster. Explore trending
+            picks and fresh updates.</p>
+          <div class="hero-search">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input class="input" type="search" placeholder="Search for productivity, design, dev tools..." />
+            <button class="button">Search</button>
           </div>
-        </div>
-      </div>
-    </section>
+        </section>
 
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Recommended for you</h2>
-        <a class="link" href="pages/apps/index.html">See more</a>
-      </div>
-      <div class="play-row" id="recommendedRow">
-        <div class="empty">Loading apps...</div>
-      </div>
-    </section>
+        <section class="store-section fade-up delay-1">
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-icon">C</div>
+              <h3>Curated</h3>
+              <p>Handpicked apps from trusted creators to keep your workflow sharp.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-icon">T</div>
+              <h3>Trusted</h3>
+              <p>Verified developers, transparent reviews, and secure releases.</p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-icon">F</div>
+              <h3>Fast</h3>
+              <p>Instant access to the latest versions and curated update notes.</p>
+            </article>
+          </div>
+        </section>
 
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Top charts</h2>
-        <span class="muted">Updated daily</span>
-      </div>
-      <div class="top-grid">
-        <ol class="top-list" id="topList">
-          <li class="top-item"><span class="rank">—</span>
-            <div class="app-meta">
-              <h3>Loading charts...</h3>
+        <section class="store-section fade-up delay-2">
+          <div class="section-head">
+            <h2 class="section-title">Browse categories</h2>
+            <span class="muted">Pick a focus to explore.</span>
+          </div>
+          <div class="category-grid">
+            <button class="category-pill">Productivity</button>
+            <button class="category-pill">Developer Tools</button>
+            <button class="category-pill">Design</button>
+            <button class="category-pill">AI & Automation</button>
+            <button class="category-pill">Security</button>
+            <button class="category-pill">Utilities</button>
+            <button class="category-pill">Education</button>
+            <button class="category-pill">Business</button>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-3">
+          <div class="section-head">
+            <h2 class="section-title">Recommended for you</h2>
+            <a class="link" href="pages/apps/index.html">See more</a>
+          </div>
+          <div class="store-row" id="recommendedRow">
+            <div class="empty">Loading apps...</div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-4">
+          <div class="section-head">
+            <h2 class="section-title">Top charts</h2>
+            <span class="muted">Updated daily</span>
+          </div>
+          <div class="top-grid">
+            <ol class="top-list" id="topList">
+              <li class="top-item"><span class="rank">—</span>
+                <div class="app-meta">
+                  <h3>Loading charts...</h3>
+                </div>
+              </li>
+            </ol>
+            <div class="top-card" id="topHighlight">
+              <p class="hero-label">Chart climber</p>
+              <h3>Loading...</h3>
+              <p>Fetching the latest published apps.</p>
+              <div class="toolbar">
+                <button class="button" disabled>Install</button>
+                <button class="button secondary" disabled>Details</button>
+              </div>
             </div>
-          </li>
-        </ol>
-        <div class="top-card" id="topHighlight">
-          <p class="hero-label">Chart climber</p>
-          <h3>Loading...</h3>
-          <p>Fetching the latest published apps.</p>
-          <div class="toolbar">
-            <button class="button" disabled>Install</button>
-            <button class="button secondary" disabled>Details</button>
           </div>
-        </div>
-      </div>
-    </section>
+        </section>
 
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">Browse categories</h2>
-        <a class="link" href="pages/apps/index.html">All categories</a>
-      </div>
-      <div class="chip-grid">
-        <button class="chip">Productivity</button>
-        <button class="chip">Developer Tools</button>
-        <button class="chip">Design</button>
-        <button class="chip">AI & Automation</button>
-        <button class="chip">Security</button>
-        <button class="chip">Utilities</button>
-        <button class="chip">Education</button>
-        <button class="chip">Business</button>
-      </div>
-    </section>
-
-    <section class="play-section reveal">
-      <div class="section-head">
-        <h2 class="section-title">New & updated</h2>
-        <a class="link" href="pages/apps/index.html">Release notes</a>
-      </div>
-      <div class="play-row" id="newRow">
-        <div class="empty">Loading updates...</div>
-      </div>
-    </section>
-  </main>
+        <section class="store-section fade-up delay-5">
+          <div class="section-head">
+            <h2 class="section-title">New & updated</h2>
+            <a class="link" href="pages/apps/index.html">Release notes</a>
+          </div>
+          <div class="store-row" id="newRow">
+            <div class="empty">Loading updates...</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
 
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
@@ -114,6 +157,7 @@
   <script src="js/ui.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/pages/theme-toggle.js"></script>
   <script src="js/pages/home.js"></script>
 </body>
 

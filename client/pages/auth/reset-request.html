@@ -7,43 +7,95 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>Reset Password - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
 </head>
 
-<body>
-  <div id="nav"></div>
-  <main class="container grid grid-2">
-    <div class="card">
-      <h2 class="section-title">Send reset email</h2>
-      <p class="muted" style="margin-bottom: 12px;">We’ll email a one-time code to your address.</p>
-      <form id="resetRequestForm">
-        <div class="form-row">
-          <label for="request-email">Email address</label>
-          <input id="request-email" class="input" type="email" name="email" required autocomplete="email" />
+<body class="store-body" data-auth-page="true">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item is-active" href="../../index.html">Home</a>
+          <a class="sidebar-item" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
         </div>
-        <button class="button" type="submit">Send reset link</button>
-      </form>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item" data-role="DEVELOPER" href="../../pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Reset access</span>
+          <h1 class="hero-title">Recover your WebHarbour account.</h1>
+          <p class="hero-sub">Send a reset code and set a new password in minutes.</p>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="grid grid-2">
+            <div class="card">
+              <h2 class="section-title">Send reset email</h2>
+              <p class="muted auth-sub">We’ll email a one-time code to your address.</p>
+              <form id="resetRequestForm">
+                <div class="form-row">
+                  <label for="request-email">Email address</label>
+                  <input id="request-email" class="input" type="email" name="email" required autocomplete="email" />
+                </div>
+                <button class="button" type="submit">Send reset link</button>
+              </form>
+            </div>
+            <div class="card">
+              <h2 class="section-title">Use your code</h2>
+              <p class="muted auth-sub">Paste the code from your email and choose a new password.</p>
+              <form id="resetConfirmForm">
+                <div class="form-row">
+                  <label for="confirm-email">Email address</label>
+                  <input id="confirm-email" class="input" type="email" name="email" required autocomplete="email" />
+                </div>
+                <div class="form-row">
+                  <label for="token">Reset code</label>
+                  <input id="token" class="input" type="text" name="token" required />
+                </div>
+                <div class="form-row">
+                  <label for="newPassword">New password</label>
+                  <input id="newPassword" class="input" type="password" name="newPassword" required
+                    autocomplete="new-password" />
+                </div>
+                <button class="button" type="submit">Apply new password</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
-    <div class="card">
-      <h2 class="section-title">Use your code</h2>
-      <p class="muted" style="margin-bottom: 12px;">Paste the code from your email and choose a new password.</p>
-      <form id="resetConfirmForm">
-        <div class="form-row">
-          <label for="confirm-email">Email address</label>
-          <input id="confirm-email" class="input" type="email" name="email" required autocomplete="email" />
-        </div>
-        <div class="form-row">
-          <label for="token">Reset code</label>
-          <input id="token" class="input" type="text" name="token" required />
-        </div>
-        <div class="form-row">
-          <label for="newPassword">New password</label>
-          <input id="newPassword" class="input" type="password" name="newPassword" required
-            autocomplete="new-password" />
-        </div>
-        <button class="button" type="submit">Apply new password</button>
-      </form>
-    </div>
-  </main>
+  </div>
 
   <script src="../../js/config.js"></script>
   <script src="../../js/api.js"></script>
@@ -51,7 +103,9 @@
   <script src="../../js/ui.js"></script>
   <script src="../../js/nav.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
   <script src="../../js/pages/auth/reset.js"></script>
 </body>
 
 </html>
+

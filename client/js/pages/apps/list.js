@@ -7,6 +7,44 @@ const categorySelect = document.getElementById("categorySelect");
 const tagSelect = document.getElementById("tagSelect");
 const pageInfo = document.getElementById("pageInfo");
 
+const params = new URLSearchParams(window.location.search);
+const initialQuery = params.get("q");
+if (initialQuery) {
+  searchInput.value = initialQuery;
+}
+
+const gradients = ["grad-a", "grad-b", "grad-c", "grad-d", "grad-e"];
+
+const hash = (value) => {
+  let out = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    out = (out << 5) - out + value.charCodeAt(i);
+    out |= 0;
+  }
+  return Math.abs(out);
+};
+
+const initials = (name) => {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "APP";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const pickGradient = (name) => gradients[hash(String(name || "")) % gradients.length];
+
+function renderIcon(app) {
+  const gradient = pickGradient(app.name);
+  if (app.iconUrl) {
+    return `
+      <div class="app-icon ${gradient} has-image">
+        <img src="${escapeHtml(ui.assetUrl(app.iconUrl))}" alt="${escapeHtml(app.name)} icon" loading="lazy" />
+      </div>
+    `;
+  }
+  return `<div class="app-icon ${gradient}">${escapeHtml(initials(app.name))}</div>`;
+}
+
 async function loadFilters() {
   const [categories, tags] = await Promise.all([
     api.get("/categories"),
@@ -35,12 +73,15 @@ async function loadApps() {
   }
 
   grid.innerHTML = items.map(app => `
-    <div class="card">
-      <h3>${escapeHtml(app.name)}</h3>
-      <p>${escapeHtml(app.description || "")}</p>
-      <div class="toolbar" style="margin-top: 12px;">
-        <span class="badge">${app.status || "PUBLISHED"}</span>
-        <a class="button secondary" href="${ui.pageUrl(`pages/apps/detail.html?id=${app.id}`)}">View</a>
+    <div class="card app-list-card">
+      ${renderIcon(app)}
+      <div class="app-meta">
+        <h3>${escapeHtml(app.name)}</h3>
+        <p>${escapeHtml(app.shortDescription || app.description || "")}</p>
+        <div class="toolbar" style="margin-top: 12px;">
+          <span class="badge">${app.status || "PUBLISHED"}</span>
+          <a class="button secondary" href="${ui.pageUrl(`pages/apps/detail.html?id=${app.id}`)}">View</a>
+        </div>
       </div>
     </div>
   `).join("");

@@ -6,24 +6,82 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
   <title>Marketplace - WebHarbour</title>
   <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
 </head>
-<body>
-  <div id="nav"></div>
-  <main class="container">
-    <h2 class="section-title">Marketplace</h2>
-    <div class="toolbar">
-      <input class="input" type="search" id="searchInput" placeholder="Search apps" />
-      <select id="categorySelect"></select>
-      <select id="tagSelect"></select>
-      <button class="button secondary" id="applyFilters">Apply</button>
+<body class="store-body">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item" href="../../index.html">Home</a>
+          <a class="sidebar-item is-active" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item" data-role="DEVELOPER" href="../../pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Marketplace</span>
+          <h1 class="hero-title">Discover apps built for every team.</h1>
+          <p class="hero-sub">Filter by category, tags, and keywords to find the perfect fit.</p>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="card">
+            <div class="toolbar">
+              <input class="input" type="search" id="searchInput" placeholder="Search apps" />
+              <select id="categorySelect"></select>
+              <select id="tagSelect"></select>
+              <button class="button secondary" id="applyFilters">Apply</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="store-section fade-up delay-2">
+          <div class="section-head">
+            <h2 class="section-title">Marketplace apps</h2>
+            <span class="muted">Updated with new releases daily.</span>
+          </div>
+          <div id="appsGrid" class="grid grid-3"></div>
+          <div class="toolbar space-between">
+            <button class="button ghost" id="prevPage">Prev</button>
+            <div id="pageInfo" class="muted"></div>
+            <button class="button ghost" id="nextPage">Next</button>
+          </div>
+        </section>
+      </main>
     </div>
-    <div id="appsGrid" class="grid grid-3"></div>
-    <div class="toolbar" style="justify-content: space-between;">
-      <button class="button ghost" id="prevPage">Prev</button>
-      <div id="pageInfo"></div>
-      <button class="button ghost" id="nextPage">Next</button>
-    </div>
-  </main>
+  </div>
 
   <script src="../../js/config.js"></script>
   <script src="../../js/api.js"></script>
@@ -31,7 +89,9 @@
   <script src="../../js/ui.js"></script>
   <script src="../../js/nav.js"></script>
   <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
   <script src="../../js/pages/apps/list.js"></script>
 </body>
 </html>
+
 

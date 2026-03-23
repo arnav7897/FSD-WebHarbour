@@ -63,6 +63,17 @@ const normalizeTagIds = (tags) => {
   return [...new Set(ids)];
 };
 
+const normalizeScreenshotUrls = (screenshots) => {
+  if (screenshots === undefined) return undefined;
+  if (screenshots === null) return [];
+  if (!Array.isArray(screenshots)) {
+    throw makeHttpError('screenshots must be an array of URLs', 400);
+  }
+  return screenshots
+    .map((url) => String(url || '').trim())
+    .filter(Boolean);
+};
+
 const ensureTagsExist = async (tagIds = []) => {
   if (!tagIds.length) return;
   const existing = await prisma.tag.findMany({
@@ -98,12 +109,31 @@ const mapAppResult = (app) => ({
   name: app.name,
   slug: app.slug,
   description: app.description,
+  shortDescription: app.shortDescription,
+  iconUrl: app.iconUrl,
+  bannerUrl: app.bannerUrl,
+  screenshots: Array.isArray(app.screenshots) ? app.screenshots : [],
   status: app.status,
+  isFree: app.isFree,
+  price: app.price,
+  discountPrice: app.discountPrice,
+  isOnSale: app.isOnSale,
+  contentType: app.contentType,
+  platforms: app.platforms,
+  fileSize: app.fileSize,
+  systemRequirements: app.systemRequirements,
+  licenseType: app.licenseType,
+  ageRating: app.ageRating,
   category: app.category,
   tags: (app.tags || []).map((entry) => entry.tag),
   developerId: app.developerId,
+  downloadCount: app.downloadCount,
+  reviewCount: app.reviewCount,
+  favoriteCount: app.favoriteCount,
+  averageRating: app.averageRating,
   createdAt: app.createdAt,
   updatedAt: app.updatedAt,
+  lastUpdatedAt: app.lastUpdatedAt,
   publishedAt: app.publishedAt,
 });
 
@@ -281,9 +311,21 @@ const updateApp = async ({ appId, userId, body }) => {
     if (!String(input.description).trim()) throw makeHttpError('description cannot be empty', 400);
     data.description = String(input.description).trim();
   }
+  if (input.shortDescription !== undefined) {
+    const value = String(input.shortDescription || '').trim();
+    data.shortDescription = value ? value : null;
+  }
   if (input.categoryId !== undefined) {
     data.categoryId = await ensureCategory(input.categoryId);
   }
+  if (input.iconUrl !== undefined) {
+    data.iconUrl = input.iconUrl ? String(input.iconUrl).trim() : null;
+  }
+  if (input.bannerUrl !== undefined) {
+    data.bannerUrl = input.bannerUrl ? String(input.bannerUrl).trim() : null;
+  }
+
+  const screenshotUrls = normalizeScreenshotUrls(input.screenshots);
 
   const tagIds = normalizeTagIds(input.tags);
   await ensureTagsExist(tagIds || []);
@@ -302,10 +344,57 @@ const updateApp = async ({ appId, userId, body }) => {
       where: { id: parsedId },
       data: {
         ...data,
+        ...(screenshotUrls !== undefined ? { screenshots: screenshotUrls } : {}),
         lastUpdatedAt: new Date(),
       },
       include: appInclude,
     });
+  });
+
+  return mapAppResult(updated);
+};
+
+const updateAppMedia = async ({
+  appId,
+  userId,
+  iconUrl,
+  bannerUrl,
+  screenshotUrls,
+  screenshotMode = 'append',
+}) => {
+  const parsedId = parseInteger(appId);
+  if (!parsedId) throw makeHttpError('Invalid app id', 400);
+
+  const app = await assertOwnership(parsedId, userId);
+  const data = {};
+
+  if (iconUrl !== undefined) {
+    data.iconUrl = iconUrl ? String(iconUrl).trim() : null;
+  }
+  if (bannerUrl !== undefined) {
+    data.bannerUrl = bannerUrl ? String(bannerUrl).trim() : null;
+  }
+
+  if (screenshotUrls !== undefined) {
+    const incoming = Array.isArray(screenshotUrls)
+      ? screenshotUrls.map((url) => String(url || '').trim()).filter(Boolean)
+      : [];
+    if (screenshotMode === 'replace') {
+      data.screenshots = incoming;
+    } else {
+      const existing = Array.isArray(app.screenshots) ? app.screenshots : [];
+      const merged = [...existing, ...incoming].filter(Boolean);
+      data.screenshots = [...new Set(merged)];
+    }
+  }
+
+  const updated = await prisma.app.update({
+    where: { id: parsedId },
+    data: {
+      ...data,
+      lastUpdatedAt: new Date(),
+    },
+    include: appInclude,
   });
 
   return mapAppResult(updated);
@@ -457,6 +546,7 @@ module.exports = {
   listApps,
   getAppById,
   updateApp,
+  updateAppMedia,
   publishApp,
   createAppVersion,
   listAppVersions,

@@ -25,6 +25,31 @@ function renderTagsValue(tags) {
   return tags.map(tag => tag && tag.id).filter(Boolean).join(",");
 }
 
+function renderMediaThumb(url, alt) {
+  if (!url) {
+    return `<div class="media-thumb empty-thumb"><span class="muted">None</span></div>`;
+  }
+  return `
+    <div class="media-thumb">
+      <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(alt)}" loading="lazy" />
+    </div>
+  `;
+}
+
+function renderScreenshotStrip(screenshots, appName) {
+  const items = Array.isArray(screenshots) ? screenshots : [];
+  if (!items.length) {
+    return `<div class="media-strip empty-thumb"><span class="muted">No screenshots</span></div>`;
+  }
+  return `
+    <div class="media-strip">
+      ${items.slice(0, 6).map((url, index) => `
+        <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(appName)} screenshot ${index + 1}" loading="lazy" />
+      `).join("")}
+    </div>
+  `;
+}
+
 async function loadApps() {
   if (!auth.hasRole("DEVELOPER")) {
     ui.renderEmpty(appsGrid, "Become a developer to manage your apps here.");
@@ -40,8 +65,13 @@ async function loadApps() {
   if (!items.length) return ui.renderEmpty(appsGrid, "No apps found.");
   appsGrid.innerHTML = items.map(app => `
     <div class="card">
-      <h3>${escapeHtml(app.name)}</h3>
-      <p>${escapeHtml(app.description || "")}</p>
+      <div class="split-row">
+        <div>
+          <h3>${escapeHtml(app.name)}</h3>
+          <p>${escapeHtml(app.description || "")}</p>
+        </div>
+        ${app.iconUrl ? `<div class="media-thumb mini-thumb"><img src="${escapeHtml(ui.assetUrl(app.iconUrl))}" alt="${escapeHtml(app.name)} icon" loading="lazy" /></div>` : ""}
+      </div>
       <div class="toolbar" style="margin-top: 12px;">
         <span class="badge">${app.status}</span>
         <a class="button secondary" data-versions="${app.id}" href="${ui.pageUrl(`pages/developer/versions.html?id=${app.id}`)}">Versions</a>
@@ -68,9 +98,40 @@ async function loadApps() {
           <label>Tags (comma separated IDs)</label>
           <input class="input" type="text" name="tags" value="${renderTagsValue(app.tags)}" />
         </div>
+        <div class="media-preview">
+          <div>
+            <p class="media-label">Icon</p>
+            ${renderMediaThumb(app.iconUrl, `${app.name} icon`)}
+          </div>
+          <div>
+            <p class="media-label">Banner</p>
+            ${renderMediaThumb(app.bannerUrl, `${app.name} banner`)}
+          </div>
+          <div class="media-wide">
+            <p class="media-label">Screenshots</p>
+            ${renderScreenshotStrip(app.screenshots, app.name)}
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Icon image</label>
+          <input class="input" type="file" name="icon" accept="image/*" />
+        </div>
+        <div class="form-row">
+          <label>Banner image</label>
+          <input class="input" type="file" name="banner" accept="image/*" />
+        </div>
+        <div class="form-row">
+          <label>Screenshots</label>
+          <input class="input" type="file" name="screenshots" accept="image/*" multiple />
+          <label class="checkbox">
+            <input type="checkbox" name="replaceScreenshots" />
+            Replace existing screenshots
+          </label>
+        </div>
         <div class="toolbar" style="margin-top: 12px;">
           <button class="button secondary" data-save="${app.id}">Save</button>
           <button class="button ghost" data-cancel="${app.id}">Cancel</button>
+          <button class="button ghost" data-upload="${app.id}">Upload Media</button>
         </div>
       </div>
     </div>
@@ -133,6 +194,41 @@ async function loadApps() {
         loadApps();
       } catch (err) {
         ui.toast(err.message || "Update failed", "error");
+      } finally {
+        ui.setLoading(btn, false);
+      }
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-upload]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.upload}"]`);
+      if (!form) return;
+      const iconFile = form.querySelector("input[name='icon']")?.files?.[0];
+      const bannerFile = form.querySelector("input[name='banner']")?.files?.[0];
+      const screenshotFiles = form.querySelector("input[name='screenshots']")?.files || [];
+      const replaceScreens = form.querySelector("input[name='replaceScreenshots']")?.checked;
+
+      if (!iconFile && !bannerFile && !screenshotFiles.length) {
+        ui.toast("Select at least one image to upload", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      if (iconFile) formData.append("icon", iconFile);
+      if (bannerFile) formData.append("banner", bannerFile);
+      if (screenshotFiles.length) {
+        Array.from(screenshotFiles).forEach((file) => formData.append("screenshots", file));
+      }
+      formData.append("mode", replaceScreens ? "replace" : "append");
+
+      ui.setLoading(btn, true);
+      try {
+        await api.postForm(`/apps/${btn.dataset.upload}/media`, formData);
+        ui.toast("Media uploaded", "success");
+        await loadApps();
+      } catch (err) {
+        ui.toast(err.message || "Upload failed", "error");
       } finally {
         ui.setLoading(btn, false);
       }
