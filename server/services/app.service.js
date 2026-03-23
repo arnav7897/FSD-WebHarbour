@@ -1,4 +1,6 @@
 const prisma = require('../config/db');
+const path = require('path');
+const { buildSignedDownloadUrl } = require('./upload.service');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -415,7 +417,16 @@ const createAppVersion = async ({ appId, userId, body }) => {
   const parsedAppId = parseInteger(appId);
   if (!parsedAppId) throw makeHttpError('Invalid app id', 400);
 
-  const { version, changelog, downloadUrl, fileSize, supportedOs } = body || {};
+  const {
+    version,
+    changelog,
+    downloadUrl,
+    downloadPublicId,
+    downloadFormat,
+    downloadFilename,
+    fileSize,
+    supportedOs,
+  } = body || {};
   if (!version || !downloadUrl) {
     throw makeHttpError('version and downloadUrl are required', 400);
   }
@@ -451,6 +462,9 @@ const createAppVersion = async ({ appId, userId, body }) => {
           version: String(version),
           changelog: changelog ? String(changelog) : null,
           downloadUrl: String(downloadUrl),
+          downloadPublicId: downloadPublicId ? String(downloadPublicId) : null,
+          downloadFormat: downloadFormat ? String(downloadFormat) : null,
+          downloadFilename: downloadFilename ? String(downloadFilename) : null,
           fileSize: fileSize ? String(fileSize) : '0 MB',
           supportedOs: normalizedSupportedOs,
         },
@@ -507,6 +521,27 @@ const listAppVersions = async (appId) => {
   });
 };
 
+const parseCloudinaryUrl = (url) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(String(url));
+    const marker = '/raw/upload/';
+    const idx = parsed.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    let publicPath = parsed.pathname.slice(idx + marker.length);
+    publicPath = publicPath.replace(/^v\d+\//, '');
+    publicPath = decodeURIComponent(publicPath);
+    const ext = path.extname(publicPath);
+    const format = ext ? ext.slice(1) : null;
+    const publicId = ext ? publicPath.slice(0, -ext.length) : publicPath;
+    const filename = publicPath.split('/').pop();
+    if (!publicId) return null;
+    return { publicId, format, filename };
+  } catch {
+    return null;
+  }
+};
+
 const getVersionDownloadInfo = async ({ appId, versionId }) => {
   const parsedAppId = parseInteger(appId);
   if (!parsedAppId) throw makeHttpError('Invalid app id', 400);
@@ -533,11 +568,32 @@ const getVersionDownloadInfo = async ({ appId, versionId }) => {
     throw makeHttpError('No version available for download. Create an app version first.', 400);
   }
 
+  let signedUrl = buildSignedDownloadUrl({
+    publicId: version.downloadPublicId,
+    format: version.downloadFormat,
+    filename: version.downloadFilename,
+  });
+
+  if (!signedUrl && version.downloadUrl) {
+    const parsed = parseCloudinaryUrl(version.downloadUrl);
+    if (parsed) {
+      signedUrl = buildSignedDownloadUrl({
+        publicId: parsed.publicId,
+        format: parsed.format,
+        filename: parsed.filename,
+      });
+    }
+  }
+  const finalUrl = signedUrl || version.downloadUrl;
+  if (!finalUrl) {
+    throw makeHttpError('No download URL available for this version.', 400);
+  }
+
   return {
     appId: app.id,
     versionId: version.id,
     version: version.version,
-    downloadUrl: version.downloadUrl,
+    downloadUrl: finalUrl,
   };
 };
 

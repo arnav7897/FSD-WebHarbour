@@ -23,13 +23,20 @@ const uploadZip = async (filePath, originalName) => {
     try {
       const result = await cloudinary.uploader.upload(filePath, {
         resource_type: 'raw',
+        type: 'upload',
+        access_mode: 'public',
         folder: 'webharbour/zips',
         use_filename: true,
         unique_filename: true,
         filename_override: baseName,
       });
+      const cloudinaryUrl = result.secure_url || result.url;
+      if (!cloudinaryUrl) {
+        throw new Error('Cloudinary did not return a file URL');
+      }
       return {
-        url: result.secure_url || result.url,
+        url: cloudinaryUrl,
+        cloudinaryUrl,
         bytes: result.bytes || 0,
         publicId: result.public_id,
         fallback: false,
@@ -47,6 +54,7 @@ const uploadZip = async (filePath, originalName) => {
   fs.copyFileSync(filePath, localTargetPath);
   return {
     url: `/uploads/${path.basename(localTargetPath)}`,
+    cloudinaryUrl: null,
     bytes: fs.statSync(localTargetPath).size,
     publicId: null,
     fallback: true,
@@ -92,7 +100,25 @@ const uploadImage = async (filePath, originalName, options = {}) => {
   };
 };
 
+const buildSignedDownloadUrl = ({ publicId, format, filename }) => {
+  if (!publicId || !canUseCloudinary()) return null;
+  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour
+  const options = {
+    resource_type: 'raw',
+    type: 'upload',
+    attachment: filename ? String(filename) : true,
+    expires_at: expiresAt,
+  };
+  try {
+    return cloudinary.utils.private_download_url(publicId, format || undefined, options);
+  } catch (err) {
+    console.error('❌ CLOUDINARY SIGN ERROR:', err);
+    return null;
+  }
+};
+
 module.exports = {
   uploadZip,
   uploadImage,
+  buildSignedDownloadUrl,
 };

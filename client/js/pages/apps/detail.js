@@ -31,6 +31,13 @@ const initials = (name) => {
 
 const pickGradient = (name) => gradients[hash(String(name || "")) % gradients.length];
 
+const buildRedirectUrl = (versionId, includeToken = false) => {
+  const base = CONFIG.API_BASE_URL.replace(/\/$/, "");
+  const token = includeToken ? auth.getAccessToken() : null;
+  const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+  return `${base}/apps/${appId}/download/redirect?versionId=${versionId}${tokenParam}`;
+};
+
 function requireAppId() {
   if (!appId) {
     appHeader.innerHTML = "<div class=\"empty\">Missing app id.</div>";
@@ -48,7 +55,7 @@ async function loadApp() {
 function renderHeader() {
   if (!currentApp) return;
   const isAuthed = auth.isLoggedIn();
-  const hasDownload = Boolean(latestVersion && latestVersion.downloadUrl);
+  const hasDownload = Boolean(latestVersion && (latestVersion.downloadUrl || latestVersion.downloadPublicId));
   const downloadLabel = latestVersion?.version ? `Download ${escapeHtml(latestVersion.version)}` : "Download";
   const sizeLabel = latestVersion?.fileSize ? ` · ${escapeHtml(latestVersion.fileSize)}` : "";
   const releaseDate = formatDate(latestVersion?.releaseDate || latestVersion?.createdAt);
@@ -90,7 +97,7 @@ function renderHeader() {
 
   if (downloadBtn) {
     downloadBtn.addEventListener("click", async () => {
-      if (!latestVersion?.downloadUrl) {
+      if (!latestVersion) {
         ui.toast("No download available", "error");
         return;
       }
@@ -99,9 +106,7 @@ function renderHeader() {
         return;
       }
       try {
-        const token = auth.getAccessToken();
-        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
-        window.location.href = `${CONFIG.API_BASE_URL.replace(/\/$/, "")}/apps/${appId}/download/redirect?versionId=${latestVersion.id}${tokenParam}`;
+        window.location.href = buildRedirectUrl(latestVersion.id, true);
       } catch (err) {
         ui.toast(err.message || "Download failed", "error");
       }
@@ -110,16 +115,17 @@ function renderHeader() {
 
   if (linkBtn) {
     linkBtn.addEventListener("click", async () => {
-      if (!latestVersion?.downloadUrl) {
+      if (!latestVersion) {
         ui.toast("No download link available", "error");
         return;
       }
-      const copied = await copyToClipboard(latestVersion.downloadUrl);
+      const redirectUrl = buildRedirectUrl(latestVersion.id, false);
+      const copied = await copyToClipboard(redirectUrl);
       if (copied) {
         ui.toast("Download link copied", "success");
         return;
       }
-      window.open(latestVersion.downloadUrl, "_blank", "noopener");
+      window.open(redirectUrl, "_blank", "noopener");
     });
   }
 
@@ -179,7 +185,9 @@ async function loadVersions() {
     versionList.removeAttribute("aria-busy");
     return ui.renderEmpty(versionList, "No versions yet.");
   }
-  versionList.innerHTML = sorted.map(v => `
+  versionList.innerHTML = sorted.map(v => {
+    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId);
+    return `
     <div class="card">
       <div class="split-row">
         <div>
@@ -190,18 +198,19 @@ async function loadVersions() {
       </div>
       <div class="toolbar" style="margin-top: 10px;">
         <span class="badge">${escapeHtml((v.supportedOs || []).join(", "))}</span>
-        ${v.downloadUrl ? `<button class="button secondary" data-download="${v.id}">Download APK</button>` : ""}
-        ${v.downloadUrl ? `<button class="button ghost" data-copy="${v.id}" data-url="${escapeHtml(v.downloadUrl)}">Copy link</button>` : ""}
+        ${hasDownload ? `<button class="button secondary" data-download="${v.id}">Download ZIP</button>` : ""}
+        ${hasDownload ? `<button class="button ghost" data-copy="${v.id}">Copy link</button>` : ""}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
   versionList.removeAttribute("aria-busy");
 
   versionList.querySelectorAll("button[data-download]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const versionId = btn.dataset.download;
       const match = sorted.find(item => String(item.id) === String(versionId));
-      if (!match?.downloadUrl) {
+      if (!match) {
         ui.toast("Download unavailable", "error");
         return;
       }
@@ -210,9 +219,7 @@ async function loadVersions() {
         return;
       }
       try {
-        const token = auth.getAccessToken();
-        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
-        window.location.href = `${CONFIG.API_BASE_URL.replace(/\/$/, "")}/apps/${appId}/download/redirect?versionId=${match.id}${tokenParam}`;
+        window.location.href = buildRedirectUrl(match.id, true);
       } catch (err) {
         ui.toast(err.message || "Download failed", "error");
       }
@@ -221,14 +228,15 @@ async function loadVersions() {
 
   versionList.querySelectorAll("button[data-copy]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const url = btn.dataset.url;
-      if (!url) return;
-      const copied = await copyToClipboard(url);
+      const versionId = btn.dataset.copy;
+      if (!versionId) return;
+      const redirectUrl = buildRedirectUrl(versionId, false);
+      const copied = await copyToClipboard(redirectUrl);
       if (copied) {
         ui.toast("Download link copied", "success");
         return;
       }
-      window.open(url, "_blank", "noopener");
+      window.open(redirectUrl, "_blank", "noopener");
     });
   });
 }

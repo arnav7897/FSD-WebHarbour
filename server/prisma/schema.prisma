@@ -209,6 +209,9 @@ model AppVersion {
 
   // Distribution
   downloadUrl   String // S3/Cloud Storage URL
+  downloadPublicId String? // Cloudinary public_id for signed downloads
+  downloadFormat String? // File extension/format (e.g., "zip")
+  downloadFilename String? // Original filename for attachment downloads
   mirrorUrl     String? // Alternative download URL
   fileSize      String // Human readable: "2.5 GB", "50 MB"
   fileSizeBytes BigInt? // Exact size in bytes

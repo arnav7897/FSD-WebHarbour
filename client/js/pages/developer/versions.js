@@ -7,6 +7,13 @@ const statusEl = document.getElementById("versionStatus");
 const debugEl = document.getElementById("versionDebug");
 let isSubmitting = false;
 
+const buildRedirectUrl = (versionId, includeToken = false) => {
+  const base = CONFIG.API_BASE_URL.replace(/\/$/, "");
+  const token = includeToken ? auth.getAccessToken() : null;
+  const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
+  return `${base}/apps/${appId}/download/redirect?versionId=${versionId}${tokenParam}`;
+};
+
 async function loadVersions() {
   if (!appId) return;
   const data = await api.get(`/apps/${appId}/versions`);
@@ -17,7 +24,9 @@ async function loadVersions() {
     return bDate - aDate;
   });
   if (!sorted.length) return ui.renderEmpty(versionList, "No versions yet.");
-  versionList.innerHTML = sorted.map(v => `
+  versionList.innerHTML = sorted.map(v => {
+    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId);
+    return `
     <div class="card">
       <div class="split-row">
         <h3>${escapeHtml(v.version)}</h3>
@@ -27,33 +36,35 @@ async function loadVersions() {
       <div class="toolbar" style="margin-top: 10px;">
         <span class="badge">${escapeHtml(v.fileSize || "")}</span>
         <span class="badge">${escapeHtml((v.supportedOs || []).join(", "))}</span>
-        ${v.downloadUrl ? `<button class="button secondary" data-download="${v.id}">Download ZIP</button>` : ""}
-        ${v.downloadUrl ? `<button class="button ghost" data-copy="${v.id}" data-url="${escapeHtml(v.downloadUrl)}">Copy link</button>` : ""}
+        ${hasDownload ? `<button class="button secondary" data-download="${v.id}">Download ZIP</button>` : ""}
+        ${hasDownload ? `<button class="button ghost" data-copy="${v.id}">Copy link</button>` : ""}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   versionList.querySelectorAll("button[data-download]").forEach(btn => {
     btn.addEventListener("click", () => {
       const match = sorted.find(item => String(item.id) === String(btn.dataset.download));
-      if (!match?.downloadUrl) {
+      if (!match) {
         ui.toast("Download unavailable", "error");
         return;
       }
-      window.open(match.downloadUrl, "_blank", "noopener");
+      window.open(buildRedirectUrl(match.id, true), "_blank", "noopener");
     });
   });
 
   versionList.querySelectorAll("button[data-copy]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const url = btn.dataset.url;
-      if (!url) return;
-      const copied = await copyToClipboard(url);
+      const versionId = btn.dataset.copy;
+      if (!versionId) return;
+      const redirectUrl = buildRedirectUrl(versionId, false);
+      const copied = await copyToClipboard(redirectUrl);
       if (copied) {
         ui.toast("Download link copied", "success");
         return;
       }
-      window.open(url, "_blank", "noopener");
+      window.open(redirectUrl, "_blank", "noopener");
     });
   });
 }

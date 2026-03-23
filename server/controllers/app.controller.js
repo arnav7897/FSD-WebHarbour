@@ -12,6 +12,7 @@ const {
 const { uploadZip, uploadImage } = require('../services/upload.service');
 const { createHttpError } = require('../middleware/error.middleware');
 const fs = require('fs');
+const path = require('path');
 const { submitAppForReview } = require('../services/moderation.service');
 const {
   createDownloadRecord,
@@ -190,7 +191,7 @@ const uploadAppVersionHandler = async (req, res, next) => {
     }
 
     const uploadResult = await uploadZip(file.path, file.originalname);
-    const downloadUrl = uploadResult.url;
+    const downloadUrl = uploadResult.cloudinaryUrl || uploadResult.url;
     if (!downloadUrl) {
       throw createHttpError(500, 'ZIP uploaded but no download URL returned from Cloudinary.');
     }
@@ -200,6 +201,9 @@ const uploadAppVersionHandler = async (req, res, next) => {
       ? String(supportedOs).split(',').map((s) => s.trim()).filter(Boolean)
       : [];
 
+    const parsedExt = path.extname(file.originalname || '');
+    const downloadFormat = parsedExt ? parsedExt.slice(1).toLowerCase() : null;
+
     const created = await createAppVersion({
       appId: req.params.id,
       userId: req.user.id,
@@ -207,6 +211,9 @@ const uploadAppVersionHandler = async (req, res, next) => {
         version,
         changelog,
         downloadUrl,
+        downloadPublicId: uploadResult.publicId || null,
+        downloadFormat,
+        downloadFilename: file.originalname || null,
         fileSize: sizeLabel,
         supportedOs: supported,
       },
@@ -214,7 +221,7 @@ const uploadAppVersionHandler = async (req, res, next) => {
 
     return res.status(201).json({
       ...created,
-      uploadUrl: uploadResult.url,
+      uploadUrl: uploadResult.cloudinaryUrl || uploadResult.url,
     });
   } catch (err) {
     return next(err);
