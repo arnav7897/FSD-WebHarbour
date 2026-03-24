@@ -15,12 +15,19 @@ const DATABASE_URL = process.env.DATABASE_URL || process.env.DB_URI;
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const STRIPE_CURRENCY = (process.env.STRIPE_CURRENCY || 'USD').toUpperCase();
+const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || 'http://localhost:5500';
 
 if (!JWT_SECRET) {
   console.warn('JWT_SECRET is not set. Auth will not work correctly.');
 }
 if (!DATABASE_URL) {
   console.warn('DATABASE_URL is not set. Prisma will not connect.');
+}
+if (!STRIPE_SECRET_KEY) {
+  console.warn('STRIPE_SECRET_KEY is not set. Stripe payments will be unavailable.');
 }
 
 module.exports = {
@@ -35,4 +42,8 @@ module.exports = {
   CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET,
+  STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_CURRENCY,
+  CLIENT_BASE_URL,
 };
