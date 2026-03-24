@@ -16,11 +16,17 @@ const userRoutes = require('../routes/user.auth');
 const reportRoutes = require('../routes/report.routes');
 const developerRoutes = require('../routes/developer.routes');
 const recommendationRoutes = require('../routes/recommendation.routes');
+const paymentRoutes = require('../routes/payment.routes');
+const { webhookHandler } = require('../controllers/payment.controller');
 const { notFoundHandler, errorHandler } = require('../middleware/error.middleware');
 
 const app = express();
 
 app.use(cors());
+
+// Webhook must come BEFORE express.json() because it needs the raw body
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), webhookHandler);
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'tmp', 'uploads')));
 
@@ -171,6 +177,7 @@ app.use('/admin', adminRoutes);
 app.use('/users', userRoutes);
 app.use('/developer', developerRoutes);
 app.use('/recommendations', recommendationRoutes);
+app.use('/payments', paymentRoutes);
 app.use('/', catalogRoutes);
 
 app.use(notFoundHandler);

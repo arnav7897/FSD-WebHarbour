@@ -103,6 +103,11 @@ model DeveloperProfile {
   verificationRequestedAt DateTime?
   verifiedAt              DateTime?
   apps                    App[]
+  
+  // Stripe Connect fields
+  stripeAccountId         String?   @unique
+  stripeAccountStatus     String?   @default("pending") // "pending", "active", "restricted"
+
   // Stats (can be computed or cached)
   totalDownloads          Int       @default(0)
   averageRating           Float     @default(0.0)
