@@ -9,7 +9,14 @@ const {
   listAppVersions,
   getVersionDownloadInfo,
 } = require('../services/app.service');
-const { uploadZip, uploadImage } = require('../services/upload.service');
+const {
+  createAppAsset,
+  listAppAssets,
+  getAppAssetDownloadInfo,
+  deleteAppAsset,
+} = require('../services/app-asset.service');
+const { uploadImage } = require('../services/upload.service');
+const { storeVersionArchive, storeAppAssetFile } = require('../services/storage/file-storage.service');
 const { createHttpError } = require('../middleware/error.middleware');
 const fs = require('fs');
 const path = require('path');
@@ -190,12 +197,12 @@ const uploadAppVersionHandler = async (req, res, next) => {
       throw createHttpError(400, 'version is required');
     }
 
-    const uploadResult = await uploadZip(file.path, file.originalname);
-    const downloadUrl = uploadResult.cloudinaryUrl || uploadResult.url;
+    const uploadResult = await storeVersionArchive({ file, appId: req.params.id });
+    const downloadUrl = uploadResult.storageObjectUrl || `${String(uploadResult.storageProvider || 'LOCAL').toLowerCase()}://${uploadResult.storageBucket ? `${uploadResult.storageBucket}/` : ''}${uploadResult.storageKey || path.basename(file.originalname || 'download.zip')}`;
     if (!downloadUrl) {
-      throw createHttpError(500, 'ZIP uploaded but no download URL returned from Cloudinary.');
+      throw createHttpError(500, 'ZIP uploaded but no download URL was returned.');
     }
-    const bytes = uploadResult.bytes || 0;
+    const bytes = uploadResult.byteSize || 0;
     const sizeLabel = fileSize || (bytes ? `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB` : '0 MB');
     const supported = supportedOs
       ? String(supportedOs).split(',').map((s) => s.trim()).filter(Boolean)
@@ -211,9 +218,14 @@ const uploadAppVersionHandler = async (req, res, next) => {
         version,
         changelog,
         downloadUrl,
-        downloadPublicId: uploadResult.publicId || null,
+        downloadPublicId: null,
         downloadFormat,
         downloadFilename: file.originalname || null,
+        storageProvider: uploadResult.storageProvider,
+        storageBucket: uploadResult.storageBucket,
+        storageKey: uploadResult.storageKey,
+        storageObjectUrl: uploadResult.storageObjectUrl,
+        mimeType: uploadResult.mimeType,
         fileSize: sizeLabel,
         supportedOs: supported,
       },
@@ -221,7 +233,7 @@ const uploadAppVersionHandler = async (req, res, next) => {
 
     return res.status(201).json({
       ...created,
-      uploadUrl: uploadResult.cloudinaryUrl || uploadResult.url,
+      uploadUrl: uploadResult.storageObjectUrl || downloadUrl,
     });
   } catch (err) {
     return next(err);
@@ -229,6 +241,66 @@ const uploadAppVersionHandler = async (req, res, next) => {
     if (file && file.path) {
       fs.unlink(file.path, () => { });
     }
+  }
+};
+
+const uploadAppAssetHandler = async (req, res, next) => {
+  const file = req.file;
+  try {
+    if (!file) {
+      throw createHttpError(400, 'file is required');
+    }
+
+    const storage = await storeAppAssetFile({ file, appId: req.params.id });
+    const asset = await createAppAsset({
+      appId: req.params.id,
+      userId: req.user.id,
+      file,
+      storage,
+      body: req.body,
+    });
+
+    return res.status(201).json(asset);
+  } catch (err) {
+    return next(err);
+  } finally {
+    if (file?.path) {
+      fs.unlink(file.path, () => { });
+    }
+  }
+};
+
+const listAppAssetsHandler = async (req, res, next) => {
+  try {
+    const assets = await listAppAssets({ appId: req.params.id });
+    return res.json(assets);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const downloadAppAssetHandler = async (req, res, next) => {
+  try {
+    const result = await getAppAssetDownloadInfo({
+      appId: req.params.id,
+      assetId: req.params.assetId,
+    });
+    return res.redirect(result.downloadUrl);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+const deleteAppAssetHandler = async (req, res, next) => {
+  try {
+    const result = await deleteAppAsset({
+      appId: req.params.id,
+      assetId: req.params.assetId,
+      userId: req.user.id,
+    });
+    return res.json(result);
+  } catch (err) {
+    return next(err);
   }
 };
 
@@ -317,6 +389,10 @@ module.exports = {
   createAppVersionHandler,
   listAppVersionsHandler,
   uploadAppVersionHandler,
+  uploadAppAssetHandler,
+  listAppAssetsHandler,
+  downloadAppAssetHandler,
+  deleteAppAssetHandler,
   downloadAppHandler,
   downloadAppRedirectHandler,
   addFavoriteHandler,

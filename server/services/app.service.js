@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const path = require('path');
 const { buildSignedDownloadUrl } = require('./upload.service');
+const { buildDownloadTarget } = require('./storage/file-storage.service');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -106,6 +107,19 @@ const getOrCreateDeveloperProfile = async (userId) => {
   return prisma.developerProfile.create({ data: { userId } });
 };
 
+const mapAppAssetResult = (asset) => ({
+  id: asset.id,
+  appId: asset.appId,
+  assetType: asset.assetType,
+  label: asset.label,
+  description: asset.description,
+  filename: asset.filename,
+  mimeType: asset.mimeType,
+  byteSize: Number(asset.byteSize || 0),
+  downloadPath: `/apps/${asset.appId}/assets/${asset.id}/download`,
+  createdAt: asset.createdAt,
+});
+
 const mapAppResult = (app) => ({
   id: app.id,
   name: app.name,
@@ -128,6 +142,7 @@ const mapAppResult = (app) => ({
   ageRating: app.ageRating,
   category: app.category,
   tags: (app.tags || []).map((entry) => entry.tag),
+  assets: (app.assets || []).map(mapAppAssetResult),
   developerId: app.developerId,
   downloadCount: app.downloadCount,
   reviewCount: app.reviewCount,
@@ -144,6 +159,11 @@ const appInclude = {
   tags: {
     include: {
       tag: true,
+    },
+  },
+  assets: {
+    orderBy: {
+      createdAt: 'desc',
     },
   },
 };
@@ -424,6 +444,11 @@ const createAppVersion = async ({ appId, userId, body }) => {
     downloadPublicId,
     downloadFormat,
     downloadFilename,
+    storageProvider,
+    storageBucket,
+    storageKey,
+    storageObjectUrl,
+    mimeType,
     fileSize,
     supportedOs,
   } = body || {};
@@ -465,6 +490,11 @@ const createAppVersion = async ({ appId, userId, body }) => {
           downloadPublicId: downloadPublicId ? String(downloadPublicId) : null,
           downloadFormat: downloadFormat ? String(downloadFormat) : null,
           downloadFilename: downloadFilename ? String(downloadFilename) : null,
+          storageProvider: storageProvider ? String(storageProvider) : null,
+          storageBucket: storageBucket ? String(storageBucket) : null,
+          storageKey: storageKey ? String(storageKey) : null,
+          storageObjectUrl: storageObjectUrl ? String(storageObjectUrl) : null,
+          mimeType: mimeType ? String(mimeType) : null,
           fileSize: fileSize ? String(fileSize) : '0 MB',
           supportedOs: normalizedSupportedOs,
         },
@@ -573,6 +603,24 @@ const getVersionDownloadInfo = async ({ appId, versionId }) => {
     format: version.downloadFormat,
     filename: version.downloadFilename,
   });
+
+  if (version.storageProvider && (version.storageKey || version.storageObjectUrl)) {
+    try {
+      const storageUrl = await buildDownloadTarget({
+        storageProvider: version.storageProvider,
+        storageBucket: version.storageBucket,
+        storageKey: version.storageKey,
+        storageObjectUrl: version.storageObjectUrl,
+        filename: version.downloadFilename,
+        mimeType: version.mimeType,
+      });
+      if (storageUrl) {
+        signedUrl = storageUrl;
+      }
+    } catch (err) {
+      if (!version.downloadUrl && !signedUrl) throw err;
+    }
+  }
 
   if (!signedUrl && version.downloadUrl) {
     const parsed = parseCloudinaryUrl(version.downloadUrl);
