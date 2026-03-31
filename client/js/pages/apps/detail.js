@@ -55,7 +55,7 @@ async function loadApp() {
 function renderHeader() {
   if (!currentApp) return;
   const isAuthed = auth.isLoggedIn();
-  const hasDownload = Boolean(latestVersion && (latestVersion.downloadUrl || latestVersion.downloadPublicId));
+  const hasDownload = Boolean(latestVersion && (latestVersion.downloadUrl || latestVersion.downloadPublicId || latestVersion.storageKey || latestVersion.storageObjectUrl));
   const downloadLabel = latestVersion?.version ? `Download ${escapeHtml(latestVersion.version)}` : "Download";
   const sizeLabel = latestVersion?.fileSize ? ` · ${escapeHtml(latestVersion.fileSize)}` : "";
   const releaseDate = formatDate(latestVersion?.releaseDate || latestVersion?.createdAt);
@@ -186,7 +186,7 @@ async function loadVersions() {
     return ui.renderEmpty(versionList, "No versions yet.");
   }
   versionList.innerHTML = sorted.map(v => {
-    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId);
+    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId || v.storageKey || v.storageObjectUrl);
     return `
     <div class="card">
       <div class="split-row">

@@ -25,7 +25,7 @@ async function loadVersions() {
   });
   if (!sorted.length) return ui.renderEmpty(versionList, "No versions yet.");
   versionList.innerHTML = sorted.map(v => {
-    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId);
+    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId || v.storageKey || v.storageObjectUrl);
     return `
     <div class="card">
       <div class="split-row">

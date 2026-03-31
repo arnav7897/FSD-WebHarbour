@@ -50,6 +50,29 @@ function renderScreenshotStrip(screenshots, appName) {
   `;
 }
 
+function renderAssetList(assets, appId) {
+  const items = Array.isArray(assets) ? assets : [];
+  if (!items.length) {
+    return `<div class="empty-thumb"><span class="muted">No product files uploaded</span></div>`;
+  }
+  return `
+    <div class="asset-list">
+      ${items.map((asset) => `
+        <div class="toolbar" style="justify-content: space-between; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 12px;">
+          <div>
+            <strong>${escapeHtml(asset.label || asset.filename || "File")}</strong>
+            <p class="muted">${escapeHtml(asset.assetType || "OTHER")} · ${escapeHtml(asset.filename || "")}</p>
+          </div>
+          <div class="toolbar">
+            <a class="button ghost" href="${escapeHtml(ui.assetUrl(`/apps/${appId}/assets/${asset.id}/download`))}" target="_blank" rel="noopener">Download</a>
+            <button class="button ghost" type="button" data-delete-asset="${asset.id}" data-app-id="${appId}">Delete</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 async function loadApps() {
   if (!auth.hasRole("DEVELOPER")) {
     ui.renderEmpty(appsGrid, "Become a developer to manage your apps here.");
@@ -132,6 +155,36 @@ async function loadApps() {
           <button class="button secondary" data-save="${app.id}">Save</button>
           <button class="button ghost" data-cancel="${app.id}">Cancel</button>
           <button class="button ghost" data-upload="${app.id}">Upload Media</button>
+        </div>
+        <div class="form-row" style="margin-top: 18px;">
+          <label>Product files / documents</label>
+          ${renderAssetList(app.assets, app.id)}
+        </div>
+        <div class="form-row">
+          <label>File</label>
+          <input class="input" type="file" name="assetFile" accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.zip,.rar,.7z,.tar,.gz,application/octet-stream" />
+        </div>
+        <div class="form-row">
+          <label>Asset type</label>
+          <select class="input" name="assetType">
+            <option value="DOCUMENT">DOCUMENT</option>
+            <option value="GUIDE">GUIDE</option>
+            <option value="LICENSE">LICENSE</option>
+            <option value="ARCHIVE">ARCHIVE</option>
+            <option value="ATTACHMENT">ATTACHMENT</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Label</label>
+          <input class="input" type="text" name="assetLabel" placeholder="Installation guide" />
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <textarea class="input" name="assetDescription" placeholder="Short note about this file"></textarea>
+        </div>
+        <div class="toolbar" style="margin-top: 12px;">
+          <button class="button ghost" type="button" data-upload-asset="${app.id}">Upload File</button>
         </div>
       </div>
     </div>
@@ -229,6 +282,50 @@ async function loadApps() {
         await loadApps();
       } catch (err) {
         ui.toast(err.message || "Upload failed", "error");
+      } finally {
+        ui.setLoading(btn, false);
+      }
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-upload-asset]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.uploadAsset}"]`);
+      if (!form) return;
+      const file = form.querySelector("input[name='assetFile']")?.files?.[0];
+      if (!file) {
+        ui.toast("Select a file to upload", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("assetType", form.querySelector("select[name='assetType']")?.value || "OTHER");
+      formData.append("label", form.querySelector("input[name='assetLabel']")?.value || "");
+      formData.append("description", form.querySelector("textarea[name='assetDescription']")?.value || "");
+
+      ui.setLoading(btn, true);
+      try {
+        await api.postForm(`/apps/${btn.dataset.uploadAsset}/assets/upload`, formData);
+        ui.toast("Product file uploaded", "success");
+        await loadApps();
+      } catch (err) {
+        ui.toast(err.message || "Asset upload failed", "error");
+      } finally {
+        ui.setLoading(btn, false);
+      }
+    });
+  });
+
+  appsGrid.querySelectorAll("button[data-delete-asset]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      ui.setLoading(btn, true);
+      try {
+        await api.del(`/apps/${btn.dataset.appId}/assets/${btn.dataset.deleteAsset}`);
+        ui.toast("Asset deleted", "success");
+        await loadApps();
+      } catch (err) {
+        ui.toast(err.message || "Asset delete failed", "error");
       } finally {
         ui.setLoading(btn, false);
       }
