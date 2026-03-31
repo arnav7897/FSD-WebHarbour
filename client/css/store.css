@@ -910,9 +910,15 @@ body.store-body[data-home="true"] .store-row > * {
   display: block;
 }
 
+#screenshotGrid{
+  height: 50vh;
+  min-height: 420px;
+}
+
 .screenshot-carousel {
   display: grid;
   gap: 16px;
+  align-content: start;
 }
 
 .screenshot-carousel-head {
@@ -940,6 +946,8 @@ body.store-body[data-home="true"] .store-row > * {
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   padding-bottom: 6px;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .screenshot-viewport::-webkit-scrollbar {
@@ -953,6 +961,7 @@ body.store-body[data-home="true"] .store-row > * {
 
 .screenshot-slide {
   scroll-snap-align: start;
+  height: 100%;
 }
 
 .screenshot-card {
@@ -961,14 +970,22 @@ body.store-body[data-home="true"] .store-row > * {
   border: 1px solid var(--line);
   background: #f6f9f7;
   box-shadow: var(--shadow-soft);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px;
 }
 
 .screenshot-card img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
   aspect-ratio: 10 / 18;
+  border-radius: 10px;
+  background: #edf4ef;
 }
 
 .screenshot-dots {
@@ -1688,6 +1705,15 @@ body.store-body[data-theme="dark"] .hamburger span {
     grid-template-columns: 1fr;
   }
 
+  #screenshotGrid {
+    height: auto;
+    min-height: 360px;
+  }
+
+  .screenshot-viewport {
+    grid-auto-columns: minmax(250px, 56%);
+  }
+
   .mobile-nav-trigger {
     display: block;
   }
@@ -1747,6 +1773,30 @@ body.store-body[data-theme="dark"] .hamburger span {
   .store-row {
     grid-auto-columns: minmax(160px, 1fr);
   }
+
+  .app-detail-shell,
+  .review-summary-card,
+  .review-form-card,
+  .review-card,
+  .version-card {
+    padding: 18px;
+  }
+
+  .app-detail-header {
+    flex-direction: column;
+  }
+
+  .app-detail-main {
+    align-items: flex-start;
+  }
+
+  .app-detail-actions {
+    width: 100%;
+  }
+
+  .screenshot-viewport {
+    grid-auto-columns: minmax(220px, 72%);
+  }
 }
 
 @media (max-width: 680px) {
@@ -1780,8 +1830,25 @@ body.store-body[data-theme="dark"] .hamburger span {
     min-width: 0;
   }
 
+  .app-detail-main {
+    gap: 14px;
+  }
+
+  .detail-metric strong,
+  .review-score {
+    font-size: 26px;
+  }
+
   .screenshot-viewport {
     grid-auto-columns: 86%;
+  }
+
+  #screenshotGrid {
+    min-height: 320px;
+  }
+
+  .screenshot-card {
+    padding: 8px;
   }
 
   .app-banner {
@@ -1790,5 +1857,34 @@ body.store-body[data-theme="dark"] .hamburger span {
 
   .app-list-card {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .store .card {
+    padding: 16px;
+  }
+
+  .app-detail-copy-block,
+  .app-detail-tags,
+  .app-detail-labels,
+  .version-meta {
+    gap: 6px;
+  }
+
+  .screenshot-carousel-actions {
+    width: 100%;
+  }
+
+  .screenshot-carousel-actions .button {
+    flex: 1;
+  }
+
+  .screenshot-viewport {
+    grid-auto-columns: 100%;
+  }
+
+  #screenshotGrid {
+    min-height: 280px;
   }
 }

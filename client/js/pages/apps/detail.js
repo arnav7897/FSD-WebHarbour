@@ -122,7 +122,7 @@ function renderHeader() {
         </div>
       </div>
       <div class="app-detail-actions">
-        <button class="button" id="downloadBtn" ${!hasDownload || !isAuthed ? "disabled" : ""}>${downloadLabel}</button>
+        <button class="button" id="downloadBtn" ${!hasDownload ? "disabled" : ""}>${downloadLabel}</button>
         <button class="button secondary" id="linkBtn" ${!hasDownload ? "disabled" : ""}>Get share link</button>
         <button class="button ghost" id="favoriteBtn" ${!isAuthed ? "disabled" : ""}>${isFavorited ? "Unsave" : "Save"}</button>
         ${!isAuthed ? `<p class="muted">Login to install, save, or review this app.</p>` : ""}
