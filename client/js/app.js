@@ -40,15 +40,7 @@
             <span class="muted">App Store</span>
           </div>
         </div>
-        <div class="sidebar-search">
-          <span class="search-icon" aria-hidden="true"></span>
-          <input class="input" type="search" placeholder="Search apps..." />
-        </div>
-        <div class="sidebar-actions">
-          <a class="button ghost auth-action" data-auth="guest" href="${base}pages/auth/login.html">Sign In</a>
-          <a class="button auth-action" data-auth="guest" href="${base}pages/auth/register.html">Create Account</a>
-          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#">Logout</a>
-        </div>
+
       `;
       const divider = document.createElement("div");
       divider.className = "sidebar-divider";

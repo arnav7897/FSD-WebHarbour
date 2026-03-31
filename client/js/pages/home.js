@@ -140,6 +140,7 @@
     window.location.href = url;
   };
 
+  const heroSearchForm = document.querySelector(".hero-search");
   const heroSearchInput = document.querySelector(".hero-search .input");
   const heroSearchButton = document.querySelector(".hero-search .button");
   if (heroSearchInput) {
@@ -150,8 +151,15 @@
       }
     });
   }
+  if (heroSearchForm) {
+    heroSearchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      goSearch(heroSearchInput ? heroSearchInput.value : "");
+    });
+  }
   if (heroSearchButton) {
-    heroSearchButton.addEventListener("click", () => {
+    heroSearchButton.addEventListener("click", (event) => {
+      event.preventDefault();
       goSearch(heroSearchInput ? heroSearchInput.value : "");
     });
   }
