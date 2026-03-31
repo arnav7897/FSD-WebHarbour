@@ -4,25 +4,186 @@ const appsGrid = document.getElementById("appsGrid");
 const becomeDevBtn = document.getElementById("becomeDev");
 const refreshDevBtn = document.getElementById("refreshDev");
 const devStatusText = document.getElementById("devStatusText");
+const successOverlay = document.getElementById("successOverlay");
+const successTitle = document.getElementById("successTitle");
+const successMessage = document.getElementById("successMessage");
+const successClose = document.getElementById("successClose");
+
 let categoriesCache = [];
+let tagsCache = [];
+let activeSuccessTimer = null;
+
+const TAG_FALLBACKS = [
+  { id: 1, name: "Open Source", slug: "open-source" },
+  { id: 2, name: "Free", slug: "free" },
+  { id: 3, name: "Premium", slug: "premium" },
+  { id: 4, name: "Beginner Friendly", slug: "beginner-friendly" },
+  { id: 5, name: "Cross Platform", slug: "cross-platform" },
+  { id: 6, name: "Trending", slug: "trending" },
+  { id: 7, name: "Verified Developer", slug: "verified-developer" },
+  { id: 8, name: "Security Audited", slug: "security-audited" }
+];
 
 async function loadCategories() {
   const categories = await api.get("/categories");
   categoriesCache = Array.isArray(categories) ? categories : [];
-  categorySelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  categorySelect.innerHTML = categoriesCache.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join("");
+}
+
+async function loadTags() {
+  try {
+    const tags = await api.get("/tags");
+    const normalized = Array.isArray(tags) ? tags : (tags.items || tags.tags || tags.data || []);
+    tagsCache = normalized.length ? normalized : TAG_FALLBACKS;
+  } catch {
+    tagsCache = TAG_FALLBACKS;
+  }
+
+  tagsCache = tagsCache
+    .map((tag, index) => ({
+      id: Number(tag.id) || index + 1,
+      name: tag.name || tag.label || TAG_FALLBACKS[index]?.name || `Tag ${index + 1}`,
+      slug: tag.slug || ""
+    }))
+    .sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 function renderCategoryOptions(selectedId) {
   if (!categoriesCache.length) return `<option value="">No categories</option>`;
-  return categoriesCache.map(cat => {
-    const isSelected = Number(selectedId) === Number(cat.id);
-    return `<option value="${cat.id}"${isSelected ? " selected" : ""}>${escapeHtml(cat.name)}</option>`;
+  return categoriesCache.map((category) => {
+    const isSelected = Number(selectedId) === Number(category.id);
+    return `<option value="${category.id}"${isSelected ? " selected" : ""}>${escapeHtml(category.name)}</option>`;
   }).join("");
 }
 
-function renderTagsValue(tags) {
-  if (!Array.isArray(tags)) return "";
-  return tags.map(tag => tag && tag.id).filter(Boolean).join(",");
+function normalizeTagIds(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => Number(tag?.id || tag))
+    .filter(Boolean);
+}
+
+function renderTagOptions(selectedIds = []) {
+  if (!tagsCache.length) return `<div class="muted">No tags available.</div>`;
+  return tagsCache.map((tag) => `
+    <label class="tag-option">
+      <input type="checkbox" value="${tag.id}" ${selectedIds.includes(Number(tag.id)) ? "checked" : ""} />
+      <span class="tag-option-meta">
+        <strong>${escapeHtml(tag.name)}</strong>
+        <small>ID ${tag.id}</small>
+      </span>
+    </label>
+  `).join("");
+}
+
+function renderSelectedTagBadges(tagIds = []) {
+  if (!tagIds.length) return `<span class="muted">No tags selected yet.</span>`;
+  return tagIds.map((tagId) => {
+    const match = tagsCache.find((tag) => Number(tag.id) === Number(tagId));
+    if (!match) return "";
+    return `<span class="badge">#${match.id} ${escapeHtml(match.name)}</span>`;
+  }).join("");
+}
+
+function setTagSelection(root, values = []) {
+  if (!root) return;
+
+  const selected = values.map(Number).filter(Boolean);
+  const label = root.querySelector("[data-tag-label]");
+  const hiddenInput = root.querySelector("[data-tag-input]");
+  const previewId = root.dataset.previewTarget;
+  const preview = previewId ? document.getElementById(previewId) : root.parentElement?.querySelector(".tag-preview");
+  const checkboxes = root.querySelectorAll(".tag-option input[type='checkbox']");
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = selected.includes(Number(checkbox.value));
+  });
+
+  hiddenInput.value = selected.join(",");
+
+  if (label) {
+    if (!selected.length) {
+      label.textContent = "Choose listing tags";
+    } else if (selected.length === 1) {
+      const tag = tagsCache.find((item) => Number(item.id) === selected[0]);
+      label.textContent = tag ? `${tag.name}` : "1 tag selected";
+    } else {
+      label.textContent = `${selected.length} tags selected`;
+    }
+  }
+
+  if (preview) {
+    preview.innerHTML = renderSelectedTagBadges(selected);
+  }
+}
+
+function initTagSelect(root, defaultValues = []) {
+  if (!root) return;
+
+  const trigger = root.querySelector("[data-tag-trigger]");
+  const menu = root.querySelector("[data-tag-menu]");
+  const optionsContainer = root.querySelector(".tag-option-list");
+  if (!trigger || !menu || !optionsContainer) return;
+
+  optionsContainer.innerHTML = renderTagOptions(defaultValues);
+  setTagSelection(root, defaultValues);
+
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = !menu.classList.contains("hidden");
+    document.querySelectorAll(".tag-select-menu").forEach((element) => element.classList.add("hidden"));
+    document.querySelectorAll(".tag-select-trigger").forEach((element) => element.setAttribute("aria-expanded", "false"));
+    if (!isOpen) {
+      menu.classList.remove("hidden");
+      trigger.setAttribute("aria-expanded", "true");
+    }
+  });
+
+  optionsContainer.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const selected = Array.from(optionsContainer.querySelectorAll("input:checked"))
+        .map((item) => Number(item.value))
+        .filter(Boolean);
+      setTagSelection(root, selected);
+    });
+  });
+}
+
+function closeTagMenus() {
+  document.querySelectorAll(".tag-select-menu").forEach((element) => element.classList.add("hidden"));
+  document.querySelectorAll(".tag-select-trigger").forEach((element) => element.setAttribute("aria-expanded", "false"));
+}
+
+function readTagSelection(scope) {
+  const input = scope.querySelector("[data-tag-input], input[name='tags']");
+  if (!input?.value) return [];
+  return input.value.split(",").map((value) => Number(value.trim())).filter(Boolean);
+}
+
+function showSuccessPopup(title, message) {
+  if (!successOverlay || !successTitle || !successMessage) return;
+  if (activeSuccessTimer) window.clearTimeout(activeSuccessTimer);
+
+  successTitle.textContent = title;
+  successMessage.textContent = message;
+  successOverlay.classList.remove("hidden");
+  successOverlay.classList.add("is-visible");
+  successOverlay.setAttribute("aria-hidden", "false");
+
+  activeSuccessTimer = window.setTimeout(() => {
+    hideSuccessPopup();
+  }, 2600);
+}
+
+function hideSuccessPopup() {
+  if (!successOverlay) return;
+  successOverlay.classList.remove("is-visible");
+  successOverlay.setAttribute("aria-hidden", "true");
+  window.setTimeout(() => {
+    if (!successOverlay.classList.contains("is-visible")) {
+      successOverlay.classList.add("hidden");
+    }
+  }, 220);
 }
 
 function renderMediaThumb(url, alt) {
@@ -73,20 +234,51 @@ function renderAssetList(assets, appId) {
   `;
 }
 
+function renderEditTagSelect(app) {
+  const selectedTags = normalizeTagIds(app.tags);
+  const selectId = `edit-${app.id}`;
+  const previewId = `tagPreview-${app.id}`;
+  return `
+    <div class="tag-select" data-tag-select="${selectId}" data-preview-target="${previewId}">
+      <button class="input tag-select-trigger" type="button" data-tag-trigger="${selectId}" aria-expanded="false">
+        <span data-tag-label="${selectId}">Choose listing tags</span>
+      </button>
+      <div class="tag-select-menu hidden" data-tag-menu="${selectId}">
+        <div class="tag-option-list">${renderTagOptions(selectedTags)}</div>
+      </div>
+      <input type="hidden" name="tags" data-tag-input="${selectId}" value="${selectedTags.join(",")}" />
+    </div>
+    <div id="${previewId}" class="tag-preview">${renderSelectedTagBadges(selectedTags)}</div>
+  `;
+}
+
+function initDynamicTagSelects(scope = document) {
+  scope.querySelectorAll("[data-tag-select]").forEach((root) => {
+    if (root.dataset.bound === "true") return;
+    root.dataset.bound = "true";
+    const input = root.querySelector("[data-tag-input]");
+    const defaultValues = input?.value ? input.value.split(",").map((value) => Number(value.trim())).filter(Boolean) : [];
+    initTagSelect(root, defaultValues);
+  });
+}
+
 async function loadApps() {
   if (!auth.hasRole("DEVELOPER")) {
     ui.renderEmpty(appsGrid, "Become a developer to manage your apps here.");
     return;
   }
+
   const status = document.getElementById("statusFilter").value;
   const params = new URLSearchParams();
   params.set("mine", "true");
   if (status) params.set("status", status);
   params.set("limit", 12);
+
   const data = await api.get(`/apps?${params.toString()}`);
   const items = data.items || data.apps || data.data || [];
   if (!items.length) return ui.renderEmpty(appsGrid, "No apps found.");
-  appsGrid.innerHTML = items.map(app => `
+
+  appsGrid.innerHTML = items.map((app) => `
     <div class="card">
       <div class="split-row">
         <div>
@@ -118,8 +310,8 @@ async function loadApps() {
           </select>
         </div>
         <div class="form-row">
-          <label>Tags (comma separated IDs)</label>
-          <input class="input" type="text" name="tags" value="${renderTagsValue(app.tags)}" />
+          <label>Tags</label>
+          ${renderEditTagSelect(app)}
         </div>
         <div class="media-preview">
           <div>
@@ -190,11 +382,14 @@ async function loadApps() {
     </div>
   `).join("");
 
-  appsGrid.querySelectorAll("button[data-submit]").forEach(btn => {
+  initDynamicTagSelects(appsGrid);
+
+  appsGrid.querySelectorAll("button[data-submit]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       try {
         await api.post(`/apps/${btn.dataset.submit}/submit`, {});
         ui.toast("Submitted for review", "success");
+        showSuccessPopup("Sent for review", "Your app listing has been forwarded for moderation.");
         loadApps();
       } catch (err) {
         ui.toast(err.message || "Submit failed", "error");
@@ -202,37 +397,35 @@ async function loadApps() {
     });
   });
 
-  appsGrid.querySelectorAll("a[data-versions]").forEach(link => {
+  appsGrid.querySelectorAll("a[data-versions]").forEach((link) => {
     link.addEventListener("click", () => {
       sessionStorage.setItem("lastAppId", link.dataset.versions);
     });
   });
 
-  appsGrid.querySelectorAll("button[data-edit]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-edit]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.edit}"]`);
       if (form) form.classList.toggle("hidden");
     });
   });
 
-  appsGrid.querySelectorAll("button[data-cancel]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-cancel]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.cancel}"]`);
       if (form) form.classList.add("hidden");
     });
   });
 
-  appsGrid.querySelectorAll("button[data-save]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-save]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.save}"]`);
       if (!form) return;
+
       const name = form.querySelector("input[name='name']").value.trim();
       const description = form.querySelector("textarea[name='description']").value.trim();
       const categoryId = Number(form.querySelector("select[name='categoryId']").value);
-      const tagsRaw = form.querySelector("input[name='tags']").value;
-      const tags = tagsRaw
-        ? tagsRaw.split(",").map(t => Number(t.trim())).filter(Boolean)
-        : [];
+      const tags = readTagSelection(form);
 
       if (!name || !description || !categoryId) {
         ui.toast("Name, description, and category are required", "error");
@@ -244,6 +437,7 @@ async function loadApps() {
       try {
         await api.patch(`/apps/${btn.dataset.save}`, payload);
         ui.toast("App updated", "success");
+        showSuccessPopup("Listing updated", "Your changes were saved successfully.");
         loadApps();
       } catch (err) {
         ui.toast(err.message || "Update failed", "error");
@@ -253,7 +447,7 @@ async function loadApps() {
     });
   });
 
-  appsGrid.querySelectorAll("button[data-upload]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-upload]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.upload}"]`);
       if (!form) return;
@@ -279,6 +473,7 @@ async function loadApps() {
       try {
         await api.postForm(`/apps/${btn.dataset.upload}/media`, formData);
         ui.toast("Media uploaded", "success");
+        showSuccessPopup("Media uploaded", "Your storefront visuals are now updated.");
         await loadApps();
       } catch (err) {
         ui.toast(err.message || "Upload failed", "error");
@@ -288,7 +483,7 @@ async function loadApps() {
     });
   });
 
-  appsGrid.querySelectorAll("button[data-upload-asset]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-upload-asset]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.uploadAsset}"]`);
       if (!form) return;
@@ -308,6 +503,7 @@ async function loadApps() {
       try {
         await api.postForm(`/apps/${btn.dataset.uploadAsset}/assets/upload`, formData);
         ui.toast("Product file uploaded", "success");
+        showSuccessPopup("File uploaded", "Your product file was added successfully.");
         await loadApps();
       } catch (err) {
         ui.toast(err.message || "Asset upload failed", "error");
@@ -317,12 +513,13 @@ async function loadApps() {
     });
   });
 
-  appsGrid.querySelectorAll("button[data-delete-asset]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-delete-asset]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       ui.setLoading(btn, true);
       try {
         await api.del(`/apps/${btn.dataset.appId}/assets/${btn.dataset.deleteAsset}`);
         ui.toast("Asset deleted", "success");
+        showSuccessPopup("File removed", "The selected asset has been removed.");
         await loadApps();
       } catch (err) {
         ui.toast(err.message || "Asset delete failed", "error");
@@ -333,26 +530,29 @@ async function loadApps() {
   });
 }
 
-createForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+createForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
   if (!auth.hasRole("DEVELOPER")) {
     ui.toast("Become a developer to create apps", "error");
     return;
   }
+
   const formData = Object.fromEntries(new FormData(createForm));
-  const tags = formData.tags ? formData.tags.split(",").map(t => Number(t.trim())).filter(Boolean) : [];
   const payload = {
     name: formData.name,
     description: formData.description,
     categoryId: Number(formData.categoryId),
-    tags
+    tags: readTagSelection(createForm)
   };
+
   const btn = createForm.querySelector("button");
   ui.setLoading(btn, true);
   try {
     await api.post("/apps", payload);
     ui.toast("App created", "success");
+    showSuccessPopup("Listing created", "Your app was created successfully. You can now upload media and release files.");
     createForm.reset();
+    setTagSelection(createForm.querySelector("[data-tag-select='create']"), []);
     loadApps();
   } catch (err) {
     ui.toast(err.message || "Create failed", "error");
@@ -362,7 +562,7 @@ createForm.addEventListener("submit", async (e) => {
 });
 
 document.getElementById("reloadApps").addEventListener("click", () => {
-  loadApps().catch(err => ui.toast(err.message || "Load failed", "error"));
+  loadApps().catch((err) => ui.toast(err.message || "Load failed", "error"));
 });
 
 becomeDevBtn.addEventListener("click", async () => {
@@ -370,10 +570,13 @@ becomeDevBtn.addEventListener("click", async () => {
     const result = await api.post("/auth/become-developer", {});
     if (result.status === "PENDING") {
       ui.toast("Developer request submitted", "success");
+      showSuccessPopup("Request submitted", "Your developer access request is now pending admin approval.");
     } else if (result.status === "APPROVED") {
       ui.toast("Developer access approved. Refresh session.", "success");
+      showSuccessPopup("Access approved", "Refresh your session to continue as a developer.");
     } else {
       ui.toast("Developer request updated", "success");
+      showSuccessPopup("Request updated", "Your developer request status has been updated.");
     }
     await loadDeveloperStatus();
   } catch (err) {
@@ -450,14 +653,30 @@ async function loadDeveloperStatus() {
 }
 
 function escapeHtml(text) {
-  return String(text || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
-  })[c]);
+  return String(text || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".tag-select")) {
+    closeTagMenus();
+  }
+});
+
+successClose?.addEventListener("click", hideSuccessPopup);
+successOverlay?.addEventListener("click", (event) => {
+  if (event.target === successOverlay) hideSuccessPopup();
+});
 
 (async () => {
   try {
-    await loadCategories();
+    await Promise.all([loadCategories(), loadTags()]);
+    initDynamicTagSelects(document);
     await loadDeveloperStatus();
     await loadApps();
   } catch (err) {
