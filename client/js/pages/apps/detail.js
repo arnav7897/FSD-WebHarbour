@@ -1,6 +1,8 @@
 const appHeader = document.getElementById("appHeader");
 const versionList = document.getElementById("versionList");
 const reviewList = document.getElementById("reviewList");
+const reviewSummary = document.getElementById("reviewSummary");
+const reviewLoadMore = document.getElementById("reviewLoadMore");
 const reviewForm = document.getElementById("reviewForm");
 const reportForm = document.getElementById("reportForm");
 const screenshotGrid = document.getElementById("screenshotGrid");
@@ -10,7 +12,10 @@ const appId = params.get("id");
 let isFavorited = false;
 let latestVersion = null;
 let currentApp = null;
+let allReviews = [];
+let renderedReviewCount = 0;
 
+const REVIEW_BATCH_SIZE = 4;
 const gradients = ["grad-a", "grad-b", "grad-c", "grad-d", "grad-e"];
 
 const hash = (value) => {
@@ -45,6 +50,32 @@ function requireAppId() {
   }
 }
 
+function renderStars(value, max = 5) {
+  const rating = Math.max(0, Math.min(max, Number(value) || 0));
+  return Array.from({ length: max }, (_, index) => {
+    const filled = index + 1 <= Math.round(rating);
+    return `<span class="rating-star${filled ? " is-filled" : ""}">&#9733;</span>`;
+  }).join("");
+}
+
+function formatReviewCount(count) {
+  const total = Number(count) || 0;
+  if (!total) return "No ratings yet";
+  if (total === 1) return "1 review";
+  return `${total} reviews`;
+}
+
+function buildReviewStats(items) {
+  const counts = [5, 4, 3, 2, 1].map((score) => ({
+    score,
+    count: items.filter((item) => Number(item.rating) === score).length
+  }));
+  const total = items.length;
+  const sum = items.reduce((acc, item) => acc + (Number(item.rating) || 0), 0);
+  const average = total ? sum / total : 0;
+  return { counts, total, average };
+}
+
 async function loadApp() {
   const app = await api.get(`/apps/${appId}`);
   currentApp = app;
@@ -54,40 +85,67 @@ async function loadApp() {
 
 function renderHeader() {
   if (!currentApp) return;
+
   const isAuthed = auth.isLoggedIn();
   const hasDownload = Boolean(latestVersion && (latestVersion.downloadUrl || latestVersion.downloadPublicId || latestVersion.storageKey || latestVersion.storageObjectUrl));
-  const downloadLabel = latestVersion?.version ? `Download ${escapeHtml(latestVersion.version)}` : "Download";
-  const sizeLabel = latestVersion?.fileSize ? ` · ${escapeHtml(latestVersion.fileSize)}` : "";
   const releaseDate = formatDate(latestVersion?.releaseDate || latestVersion?.createdAt);
-  const versionMeta = latestVersion
-    ? `<p class="muted">Latest release: ${escapeHtml(latestVersion.version)}${sizeLabel}${releaseDate ? ` · ${releaseDate}` : ""}</p>`
-    : `<p class="muted">No downloadable version yet.</p>`;
-
+  const stats = buildReviewStats(allReviews);
+  const categoryName = currentApp.category?.name || "Utilities";
+  const tagMarkup = Array.isArray(currentApp.tags) && currentApp.tags.length
+    ? currentApp.tags.slice(0, 4).map((tag) => `<span class="badge">${escapeHtml(tag.name || tag.label || tag)}</span>`).join("")
+    : `<span class="badge">${escapeHtml(categoryName)}</span>`;
   const iconMarkup = currentApp.iconUrl
     ? `<div class="app-icon lg has-image"><img src="${escapeHtml(ui.assetUrl(currentApp.iconUrl))}" alt="${escapeHtml(currentApp.name)} icon" loading="lazy" /></div>`
     : `<div class="app-icon lg ${pickGradient(currentApp.name)}">${escapeHtml(initials(currentApp.name))}</div>`;
-
   const bannerMarkup = currentApp.bannerUrl
     ? `<div class="app-banner"><img src="${escapeHtml(ui.assetUrl(currentApp.bannerUrl))}" alt="${escapeHtml(currentApp.name)} banner" loading="lazy" /></div>`
     : "";
+  const description = currentApp.shortDescription || currentApp.description || "No description provided yet.";
+  const versionLabel = latestVersion?.version ? escapeHtml(latestVersion.version) : "Coming soon";
+  const downloadLabel = latestVersion?.version ? `Install ${escapeHtml(latestVersion.version)}` : "Install";
+  const sizeLabel = latestVersion?.fileSize ? escapeHtml(latestVersion.fileSize) : "Size unavailable";
+  const updatedLabel = releaseDate || "Update date unavailable";
 
   appHeader.innerHTML = `
     ${bannerMarkup}
-    <div class="app-header">
-      ${iconMarkup}
-      <div>
-        <h2 class="section-title">${escapeHtml(currentApp.name)}</h2>
-        <p>${escapeHtml(currentApp.description || "")}</p>
-        ${versionMeta}
+    <div class="app-detail-header">
+      <div class="app-detail-main">
+        ${iconMarkup}
+        <div class="app-detail-copy-block">
+          <div class="app-detail-labels">
+            <span class="hero-pill">${escapeHtml(categoryName)}</span>
+            <span class="badge">${escapeHtml(currentApp.status || "PUBLISHED")}</span>
+          </div>
+          <h2 class="section-title">${escapeHtml(currentApp.name)}</h2>
+          <p class="app-detail-description">${escapeHtml(description)}</p>
+          <div class="app-detail-tags">${tagMarkup}</div>
+        </div>
+      </div>
+      <div class="app-detail-actions">
+        <button class="button" id="downloadBtn" ${!hasDownload || !isAuthed ? "disabled" : ""}>${downloadLabel}</button>
+        <button class="button secondary" id="linkBtn" ${!hasDownload ? "disabled" : ""}>Get share link</button>
+        <button class="button ghost" id="favoriteBtn" ${!isAuthed ? "disabled" : ""}>${isFavorited ? "Unsave" : "Save"}</button>
+        ${!isAuthed ? `<p class="muted">Login to install, save, or review this app.</p>` : ""}
       </div>
     </div>
-    <div class="toolbar" style="margin-top: 12px;">
-      <span class="badge">${currentApp.status || "PUBLISHED"}</span>
-      <button class="button" id="downloadBtn" ${!hasDownload || !isAuthed ? "disabled" : ""}>${downloadLabel}</button>
-      <button class="button secondary" id="linkBtn" ${!hasDownload ? "disabled" : ""}>Get link</button>
-      <button class="button ghost" id="favoriteBtn" ${!isAuthed ? "disabled" : ""}>${isFavorited ? "Unfavorite" : "Favorite"}</button>
+    <div class="app-detail-metrics">
+      <div class="detail-metric">
+        <strong>${stats.average ? stats.average.toFixed(1) : "New"}</strong>
+        <span>Rating</span>
+        <div class="rating-stars" aria-hidden="true">${renderStars(stats.average)}</div>
+        <small>${formatReviewCount(stats.total)}</small>
+      </div>
+      <div class="detail-metric">
+        <strong>${versionLabel}</strong>
+        <span>Current version</span>
+        <small>${sizeLabel}</small>
+      </div>
+      <div class="detail-metric">
+        <strong>${updatedLabel}</strong>
+        <span>Updated</span>
+        <small>${hasDownload ? "Ready to install" : "Awaiting release file"}</small>
+      </div>
     </div>
-    ${!isAuthed ? `<p class="muted">Login to track downloads or favorite this app.</p>` : ""}
   `;
   appHeader.removeAttribute("aria-busy");
 
@@ -143,11 +201,11 @@ function renderHeader() {
           await api.del(`/apps/${appId}/favorite`);
           isFavorited = false;
         }
-        loadApp();
+        renderHeader();
       } catch (err) {
         if (err.status === 409) {
           isFavorited = true;
-          loadApp();
+          renderHeader();
           return;
         }
         ui.toast(err.message || "Favorite failed", "error");
@@ -159,16 +217,66 @@ function renderHeader() {
 function renderScreenshots() {
   if (!screenshotGrid) return;
   const items = Array.isArray(currentApp?.screenshots) ? currentApp.screenshots : [];
+
   if (!items.length) {
     screenshotGrid.removeAttribute("aria-busy");
     return ui.renderEmpty(screenshotGrid, "No screenshots uploaded yet.");
   }
-  screenshotGrid.innerHTML = items.map((url, index) => `
-    <div class="screenshot-card">
-      <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(currentApp?.name || "App")} screenshot ${index + 1}" loading="lazy" />
-    </div>
+
+  const slides = items.map((url, index) => `
+    <article class="screenshot-slide" data-index="${index}">
+      <div class="screenshot-card">
+        <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(currentApp?.name || "App")} screenshot ${index + 1}" loading="lazy" />
+      </div>
+    </article>
   `).join("");
+
+  const dots = items.map((_, index) => `
+    <button class="screenshot-dot${index === 0 ? " is-active" : ""}" type="button" data-slide="${index}" aria-label="Show screenshot ${index + 1}"></button>
+  `).join("");
+
+  screenshotGrid.innerHTML = `
+    <div class="screenshot-carousel-head">
+      <p class="hero-label">Preview flow</p>
+      <div class="screenshot-carousel-actions">
+        <button class="button ghost screenshot-nav" type="button" data-direction="prev" aria-label="Previous screenshot">Prev</button>
+        <button class="button ghost screenshot-nav" type="button" data-direction="next" aria-label="Next screenshot">Next</button>
+      </div>
+    </div>
+    <div class="screenshot-viewport" id="screenshotViewport">${slides}</div>
+    <div class="screenshot-dots" aria-label="Screenshot navigation">${dots}</div>
+  `;
   screenshotGrid.removeAttribute("aria-busy");
+
+  const viewport = document.getElementById("screenshotViewport");
+  const navButtons = screenshotGrid.querySelectorAll(".screenshot-nav");
+  const dotButtons = screenshotGrid.querySelectorAll(".screenshot-dot");
+  const slideCount = items.length;
+
+  const updateDots = () => {
+    const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || 1;
+    const activeIndex = Math.min(slideCount - 1, Math.round(viewport.scrollLeft / slideWidth));
+    dotButtons.forEach((dot, index) => dot.classList.toggle("is-active", index === activeIndex));
+  };
+
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || viewport.clientWidth;
+      const direction = button.dataset.direction === "next" ? 1 : -1;
+      viewport.scrollBy({ left: slideWidth * direction, behavior: "smooth" });
+    });
+  });
+
+  dotButtons.forEach((dot) => {
+    dot.addEventListener("click", () => {
+      const index = Number(dot.dataset.slide) || 0;
+      const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || viewport.clientWidth;
+      viewport.scrollTo({ left: slideWidth * index, behavior: "smooth" });
+    });
+  });
+
+  viewport.addEventListener("scroll", updateDots, { passive: true });
+  updateDots();
 }
 
 async function loadVersions() {
@@ -179,37 +287,46 @@ async function loadVersions() {
     const bDate = new Date(b.releaseDate || b.createdAt || 0).getTime();
     return bDate - aDate;
   });
+
   latestVersion = sorted[0] || null;
   renderHeader();
+
   if (!sorted.length) {
     versionList.removeAttribute("aria-busy");
     return ui.renderEmpty(versionList, "No versions yet.");
   }
-  versionList.innerHTML = sorted.map(v => {
-    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId || v.storageKey || v.storageObjectUrl);
+
+  versionList.innerHTML = sorted.map((version, index) => {
+    const hasDownload = Boolean(version.downloadUrl || version.downloadPublicId || version.storageKey || version.storageObjectUrl);
+    const supportedOs = Array.isArray(version.supportedOs) && version.supportedOs.length ? version.supportedOs.join(", ") : "All platforms";
+
     return `
-    <div class="card">
-      <div class="split-row">
-        <div>
-          <h3>${escapeHtml(v.version)}</h3>
-          <p>${escapeHtml(v.changelog || "")}</p>
+      <div class="card version-card">
+        <div class="version-card-head">
+          <div>
+            <p class="hero-label">${index === 0 ? "Latest release" : "Previous release"}</p>
+            <h3>${escapeHtml(version.version)}</h3>
+          </div>
+          <span class="badge">${escapeHtml(version.fileSize || "File size pending")}</span>
         </div>
-        <span class="badge">${escapeHtml(v.fileSize || "")}</span>
+        <p>${escapeHtml(version.changelog || "No changelog added for this release.")}</p>
+        <div class="version-meta">
+          <span class="badge">${escapeHtml(supportedOs)}</span>
+          <span class="badge">${escapeHtml(formatDate(version.releaseDate || version.createdAt) || "Date pending")}</span>
+        </div>
+        <div class="toolbar">
+          ${hasDownload ? `<button class="button secondary" data-download="${version.id}">Download ZIP</button>` : ""}
+          ${hasDownload ? `<button class="button ghost" data-copy="${version.id}">Copy link</button>` : ""}
+        </div>
       </div>
-      <div class="toolbar" style="margin-top: 10px;">
-        <span class="badge">${escapeHtml((v.supportedOs || []).join(", "))}</span>
-        ${hasDownload ? `<button class="button secondary" data-download="${v.id}">Download ZIP</button>` : ""}
-        ${hasDownload ? `<button class="button ghost" data-copy="${v.id}">Copy link</button>` : ""}
-      </div>
-    </div>
-  `;
+    `;
   }).join("");
   versionList.removeAttribute("aria-busy");
 
-  versionList.querySelectorAll("button[data-download]").forEach(btn => {
+  versionList.querySelectorAll("button[data-download]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const versionId = btn.dataset.download;
-      const match = sorted.find(item => String(item.id) === String(versionId));
+      const match = sorted.find((item) => String(item.id) === String(versionId));
       if (!match) {
         ui.toast("Download unavailable", "error");
         return;
@@ -226,7 +343,7 @@ async function loadVersions() {
     });
   });
 
-  versionList.querySelectorAll("button[data-copy]").forEach(btn => {
+  versionList.querySelectorAll("button[data-copy]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const versionId = btn.dataset.copy;
       if (!versionId) return;
@@ -241,30 +358,41 @@ async function loadVersions() {
   });
 }
 
-async function loadReviews() {
-  const data = await api.get(`/apps/${appId}/reviews`);
-  const items = Array.isArray(data) ? data : (data.items || data.reviews || data.data || []);
-  if (!items.length) {
-    reviewList.removeAttribute("aria-busy");
-    return ui.renderEmpty(reviewList, "No reviews yet.");
-  }
-  reviewList.innerHTML = items.map(r => `
-    <div class="card" style="margin-bottom: 12px;">
-      <div class="toolbar" style="justify-content: space-between;">
-        <strong>${escapeHtml(r.title || "Review")}</strong>
-        <span class="badge">${r.rating}/5</span>
+function renderReviewSummary() {
+  if (!reviewSummary) return;
+
+  const { average, total, counts } = buildReviewStats(allReviews);
+  const rows = counts.map(({ score, count }) => {
+    const width = total ? Math.round((count / total) * 100) : 0;
+    return `
+      <div class="review-breakdown-row">
+        <span>${score}</span>
+        <div class="review-breakdown-bar"><span style="width: ${width}%"></span></div>
+        <strong>${count}</strong>
       </div>
-      ${r.user?.name ? `<p class="muted">by ${escapeHtml(r.user.name)}</p>` : ""}
-      <p>${escapeHtml(r.comment || "")}</p>
-      <div class="toolbar">
-        <button class="button ghost" data-edit="${r.id}">Edit</button>
-        <button class="button danger" data-delete="${r.id}">Delete</button>
+    `;
+  }).join("");
+
+  reviewSummary.innerHTML = `
+    <div class="review-summary-top">
+      <div>
+        <p class="hero-label">User rating</p>
+        <div class="review-score">${total ? average.toFixed(1) : "0.0"}</div>
+        <div class="rating-stars review-stars-lg" aria-hidden="true">${renderStars(average)}</div>
+        <p class="muted">${formatReviewCount(total)}</p>
+      </div>
+      <div class="review-summary-copy">
+        <h3>What people are saying</h3>
+        <p>Recent feedback appears first, and more reviews load in batches to keep the page clean and easy to browse.</p>
       </div>
     </div>
-  `).join("");
-  reviewList.removeAttribute("aria-busy");
+    <div class="review-breakdown">${rows}</div>
+  `;
+  reviewSummary.removeAttribute("aria-busy");
+}
 
-  reviewList.querySelectorAll("button[data-delete]").forEach(btn => {
+function bindReviewActions() {
+  reviewList.querySelectorAll("button[data-delete]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       try {
         await api.del(`/apps/${appId}/reviews/${btn.dataset.delete}`);
@@ -276,12 +404,13 @@ async function loadReviews() {
     });
   });
 
-  reviewList.querySelectorAll("button[data-edit]").forEach(btn => {
+  reviewList.querySelectorAll("button[data-edit]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const reviewId = btn.dataset.edit;
       const rating = prompt("Rating (1-5):");
       const title = prompt("Title:");
       const comment = prompt("Comment:");
+
       try {
         await api.patch(`/apps/${appId}/reviews/${reviewId}`, { rating, title, comment });
         ui.toast("Review updated", "success");
@@ -293,15 +422,79 @@ async function loadReviews() {
   });
 }
 
-reviewForm.addEventListener("submit", async (e) => {
+function renderReviewCards() {
+  if (!reviewList) return;
+
+  if (!allReviews.length) {
+    reviewList.removeAttribute("aria-busy");
+    reviewLoadMore?.classList.add("hidden");
+    return ui.renderEmpty(reviewList, "No reviews yet.");
+  }
+
+  const visibleItems = allReviews.slice(0, renderedReviewCount);
+  reviewList.innerHTML = visibleItems.map((review) => `
+    <article class="card review-card">
+      <div class="review-card-head">
+        <div>
+          <h3>${escapeHtml(review.title || "User review")}</h3>
+          <p class="muted">${escapeHtml(review.user?.name || "Anonymous")} - ${escapeHtml(formatDate(review.createdAt) || "Recently posted")}</p>
+        </div>
+        <div class="review-rating-badge">
+          <div class="rating-stars" aria-hidden="true">${renderStars(review.rating)}</div>
+          <span>${escapeHtml(String(review.rating || 0))}/5</span>
+        </div>
+      </div>
+      <p>${escapeHtml(review.comment || "No written comment provided.")}</p>
+      ${auth.isLoggedIn() ? `
+        <div class="toolbar">
+          <button class="button ghost" data-edit="${review.id}">Edit</button>
+          <button class="button danger" data-delete="${review.id}">Delete</button>
+        </div>
+      ` : ""}
+    </article>
+  `).join("");
+  reviewList.removeAttribute("aria-busy");
+  bindReviewActions();
+
+  if (reviewLoadMore) {
+    const hasMore = renderedReviewCount < allReviews.length;
+    reviewLoadMore.classList.toggle("hidden", !hasMore);
+    reviewLoadMore.textContent = hasMore ? `Load more reviews (${allReviews.length - renderedReviewCount} left)` : "All reviews loaded";
+  }
+}
+
+async function loadReviews() {
+  const data = await api.get(`/apps/${appId}/reviews`);
+  const items = Array.isArray(data) ? data : (data.items || data.reviews || data.data || []);
+
+  allReviews = [...items].sort((a, b) => {
+    const aTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+    const bTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+    return bTime - aTime;
+  });
+  renderedReviewCount = Math.min(REVIEW_BATCH_SIZE, allReviews.length);
+
+  renderReviewSummary();
+  renderReviewCards();
+  renderHeader();
+}
+
+reviewLoadMore?.addEventListener("click", () => {
+  renderedReviewCount = Math.min(renderedReviewCount + REVIEW_BATCH_SIZE, allReviews.length);
+  renderReviewCards();
+});
+
+reviewForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!auth.isLoggedIn()) {
     window.location.href = ui.pageUrl("pages/auth/login.html");
     return;
   }
+
   const data = Object.fromEntries(new FormData(reviewForm));
   const btn = reviewForm.querySelector("button");
   ui.setLoading(btn, true);
+
   try {
     await api.post(`/apps/${appId}/reviews`, data);
     ui.toast("Review submitted", "success");
@@ -314,15 +507,17 @@ reviewForm.addEventListener("submit", async (e) => {
   }
 });
 
-reportForm.addEventListener("submit", async (e) => {
+reportForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!auth.isLoggedIn()) {
     window.location.href = ui.pageUrl("pages/auth/login.html");
     return;
   }
+
   const data = Object.fromEntries(new FormData(reportForm));
   const btn = reportForm.querySelector("button");
   ui.setLoading(btn, true);
+
   try {
     await api.post("/reports", { type: "APP", targetId: Number(appId), ...data });
     ui.toast("Report submitted", "success");
@@ -339,14 +534,18 @@ async function loadFavoritesState() {
   try {
     const data = await api.get("/users/me/favorites");
     const items = data.items || data.favorites || data.data || [];
-    isFavorited = items.some(i => String(i.appId || i.id) === String(appId));
+    isFavorited = items.some((item) => String(item.appId || item.id) === String(appId));
   } catch {}
 }
 
 function escapeHtml(text) {
-  return String(text || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
-  })[c]);
+  return String(text || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
 
 function formatDate(value) {
@@ -376,9 +575,7 @@ async function copyToClipboard(text) {
       reportForm.closest(".card")?.classList.add("hidden");
     }
     await loadFavoritesState();
-    await loadApp();
-    await loadVersions();
-    await loadReviews();
+    await Promise.all([loadApp(), loadVersions(), loadReviews()]);
   } catch (err) {
     ui.toast(err.message || "Failed to load app", "error");
   }
