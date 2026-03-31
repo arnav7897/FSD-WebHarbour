@@ -224,7 +224,7 @@ function renderScreenshots() {
   }
 
   const slides = items.map((url, index) => `
-    <article class="screenshot-slide" data-index="${index}">
+    <article class="screenshot-slide${index === 0 ? " is-active" : ""}" data-index="${index}">
       <div class="screenshot-card">
         <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(currentApp?.name || "App")} screenshot ${index + 1}" loading="lazy" />
       </div>
@@ -251,32 +251,31 @@ function renderScreenshots() {
   const viewport = document.getElementById("screenshotViewport");
   const navButtons = screenshotGrid.querySelectorAll(".screenshot-nav");
   const dotButtons = screenshotGrid.querySelectorAll(".screenshot-dot");
+  const slideItems = screenshotGrid.querySelectorAll(".screenshot-slide");
   const slideCount = items.length;
+  let activeIndex = 0;
 
-  const updateDots = () => {
-    const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || 1;
-    const activeIndex = Math.min(slideCount - 1, Math.round(viewport.scrollLeft / slideWidth));
+  const updateActiveSlide = (nextIndex) => {
+    activeIndex = (nextIndex + slideCount) % slideCount;
+    slideItems.forEach((slide, index) => slide.classList.toggle("is-active", index === activeIndex));
     dotButtons.forEach((dot, index) => dot.classList.toggle("is-active", index === activeIndex));
   };
 
   navButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || viewport.clientWidth;
       const direction = button.dataset.direction === "next" ? 1 : -1;
-      viewport.scrollBy({ left: slideWidth * direction, behavior: "smooth" });
+      updateActiveSlide(activeIndex + direction);
     });
   });
 
   dotButtons.forEach((dot) => {
     dot.addEventListener("click", () => {
-      const index = Number(dot.dataset.slide) || 0;
-      const slideWidth = viewport.firstElementChild?.getBoundingClientRect().width || viewport.clientWidth;
-      viewport.scrollTo({ left: slideWidth * index, behavior: "smooth" });
+      updateActiveSlide(Number(dot.dataset.slide) || 0);
     });
   });
 
-  viewport.addEventListener("scroll", updateDots, { passive: true });
-  updateDots();
+  viewport.setAttribute("aria-live", "polite");
+  updateActiveSlide(0);
 }
 
 async function loadVersions() {
