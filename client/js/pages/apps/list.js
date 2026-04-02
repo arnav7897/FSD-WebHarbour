@@ -57,6 +57,7 @@ async function loadFilters() {
 }
 
 async function loadApps() {
+  ui.renderCardSkeletons(grid, 6);
   const params = new URLSearchParams();
   if (searchInput.value) params.set("q", searchInput.value);
   if (categorySelect.value) params.set("categoryId", categorySelect.value);

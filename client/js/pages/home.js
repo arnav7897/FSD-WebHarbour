@@ -175,6 +175,27 @@
   }
 
   const loadApps = async () => {
+    ui.renderRowSkeletons(recommendedRow, 4);
+    ui.renderRowSkeletons(newRow, 4);
+    topList.innerHTML = Array.from({ length: 3 }, () => `
+      <li class="top-item skeleton-card">
+        <div class="skeleton-line sm skeleton"></div>
+        <div class="app-icon skeleton"></div>
+        <div>
+          <div class="skeleton-line md skeleton"></div>
+          <div class="skeleton-line sm skeleton"></div>
+        </div>
+      </li>
+    `).join("");
+    topHighlight.innerHTML = `
+      <p class="hero-label">Chart climber</p>
+      <div class="skeleton-line lg skeleton"></div>
+      <div class="skeleton-line md skeleton"></div>
+      <div class="toolbar">
+        <div class="skeleton-pill skeleton"></div>
+        <div class="skeleton-pill skeleton"></div>
+      </div>
+    `;
     try {
       const data = await api.get("/recommendations/home?recommendedLimit=6&chartLimit=3&updateLimit=6");
       const recommended = extractList(data, "recommended");

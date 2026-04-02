@@ -9,6 +9,7 @@ resetReq.addEventListener("submit", async (e) => {
   try {
     await api.post("/auth/password-reset/request", data);
     ui.toast("If this email exists, we sent a reset code.", "success");
+    ui.success("If the email exists, a reset code has been sent.", "Reset code sent");
   } catch (err) {
     ui.toast(err.message || "Unable to send reset code. Try again.", "error");
   } finally {
@@ -24,7 +25,10 @@ resetConf.addEventListener("submit", async (e) => {
   try {
     await api.post("/auth/password-reset/confirm", data);
     ui.toast("Password updated. Sign in with your new password.", "success");
-    window.location.href = ui.pageUrl("pages/auth/login.html");
+    ui.success("Sign in with your new password.", "Password updated");
+    window.setTimeout(() => {
+      window.location.href = ui.pageUrl("pages/auth/login.html");
+    }, 900);
   } catch (err) {
     ui.toast(err.message || "Could not reset password. Confirm your code and try again.", "error");
   } finally {

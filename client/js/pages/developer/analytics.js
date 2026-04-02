@@ -8,6 +8,7 @@ function metricCard(label, value) {
 }
 
 async function loadOverview() {
+  ui.renderCardSkeletons(overviewEl, 4);
   const data = await api.get("/developer/analytics/overview");
   const totals = data.totals || {};
   const items = [
@@ -24,6 +25,7 @@ async function loadAppAnalytics() {
     appAnalytics.innerHTML = "<div class=\"empty\">Select an app from Dashboard to view analytics.</div>";
     return;
   }
+  ui.renderCardSkeletons(appAnalytics, 2);
   const data = await api.get(`/developer/analytics/apps/${appId}`);
   const totals = data.totals || {};
   const versionBlock = data.versions || {};

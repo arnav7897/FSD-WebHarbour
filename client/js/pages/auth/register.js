@@ -7,7 +7,10 @@ form.addEventListener("submit", async (e) => {
   try {
     await auth.register(data);
     ui.toast("Account created. Sign in to continue.", "success");
-    window.location.href = ui.pageUrl("pages/auth/login.html");
+    ui.success("Your account was created successfully. Sign in to continue.", "Account created");
+    window.setTimeout(() => {
+      window.location.href = ui.pageUrl("pages/auth/login.html");
+    }, 900);
   } catch (err) {
     ui.toast(err.message || "Could not create account. Try again shortly.", "error");
   } finally {

@@ -1,6 +1,7 @@
 const table = document.getElementById("reportTable");
 
 async function loadReports() {
+  ui.renderTableSkeleton(table, 5, 5);
   const status = document.getElementById("statusFilter").value;
   const type = document.getElementById("typeFilter").value;
   const params = new URLSearchParams();

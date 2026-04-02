@@ -497,6 +497,7 @@ reviewForm?.addEventListener("submit", async (e) => {
   try {
     await api.post(`/apps/${appId}/reviews`, data);
     ui.toast("Review submitted", "success");
+    ui.success("Your review was submitted successfully.", "Review submitted");
     reviewForm.reset();
     loadReviews();
   } catch (err) {
@@ -520,6 +521,7 @@ reportForm?.addEventListener("submit", async (e) => {
   try {
     await api.post("/reports", { type: "APP", targetId: Number(appId), ...data });
     ui.toast("Report submitted", "success");
+    ui.success("Your report has been submitted for review.", "Report submitted");
     reportForm.reset();
   } catch (err) {
     ui.toast(err.message || "Report failed", "error");
