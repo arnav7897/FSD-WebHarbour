@@ -4,25 +4,155 @@ const appsGrid = document.getElementById("appsGrid");
 const becomeDevBtn = document.getElementById("becomeDev");
 const refreshDevBtn = document.getElementById("refreshDev");
 const devStatusText = document.getElementById("devStatusText");
+
 let categoriesCache = [];
+let tagsCache = [];
+
+const TAG_FALLBACKS = [
+  { id: 1, name: "Open Source", slug: "open-source" },
+  { id: 2, name: "Free", slug: "free" },
+  { id: 3, name: "Premium", slug: "premium" },
+  { id: 4, name: "Beginner Friendly", slug: "beginner-friendly" },
+  { id: 5, name: "Cross Platform", slug: "cross-platform" },
+  { id: 6, name: "Trending", slug: "trending" },
+  { id: 7, name: "Verified Developer", slug: "verified-developer" },
+  { id: 8, name: "Security Audited", slug: "security-audited" }
+];
 
 async function loadCategories() {
   const categories = await api.get("/categories");
   categoriesCache = Array.isArray(categories) ? categories : [];
-  categorySelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  categorySelect.innerHTML = categoriesCache.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join("");
+}
+
+async function loadTags() {
+  try {
+    const tags = await api.get("/tags");
+    const normalized = Array.isArray(tags) ? tags : (tags.items || tags.tags || tags.data || []);
+    tagsCache = normalized.length ? normalized : TAG_FALLBACKS;
+  } catch {
+    tagsCache = TAG_FALLBACKS;
+  }
+
+  tagsCache = tagsCache
+    .map((tag, index) => ({
+      id: Number(tag.id) || index + 1,
+      name: tag.name || tag.label || TAG_FALLBACKS[index]?.name || `Tag ${index + 1}`,
+      slug: tag.slug || ""
+    }))
+    .sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 function renderCategoryOptions(selectedId) {
   if (!categoriesCache.length) return `<option value="">No categories</option>`;
-  return categoriesCache.map(cat => {
-    const isSelected = Number(selectedId) === Number(cat.id);
-    return `<option value="${cat.id}"${isSelected ? " selected" : ""}>${escapeHtml(cat.name)}</option>`;
+  return categoriesCache.map((category) => {
+    const isSelected = Number(selectedId) === Number(category.id);
+    return `<option value="${category.id}"${isSelected ? " selected" : ""}>${escapeHtml(category.name)}</option>`;
   }).join("");
 }
 
-function renderTagsValue(tags) {
-  if (!Array.isArray(tags)) return "";
-  return tags.map(tag => tag && tag.id).filter(Boolean).join(",");
+function normalizeTagIds(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => Number(tag?.id || tag))
+    .filter(Boolean);
+}
+
+function renderTagOptions(selectedIds = []) {
+  if (!tagsCache.length) return `<div class="muted">No tags available.</div>`;
+  return tagsCache.map((tag) => `
+    <label class="tag-option">
+      <input type="checkbox" value="${tag.id}" ${selectedIds.includes(Number(tag.id)) ? "checked" : ""} />
+      <span class="tag-option-meta">
+        <strong>${escapeHtml(tag.name)}</strong>
+        <small>ID ${tag.id}</small>
+      </span>
+    </label>
+  `).join("");
+}
+
+function renderSelectedTagBadges(tagIds = []) {
+  if (!tagIds.length) return `<span class="muted">No tags selected yet.</span>`;
+  return tagIds.map((tagId) => {
+    const match = tagsCache.find((tag) => Number(tag.id) === Number(tagId));
+    if (!match) return "";
+    return `<span class="badge">#${match.id} ${escapeHtml(match.name)}</span>`;
+  }).join("");
+}
+
+function setTagSelection(root, values = []) {
+  if (!root) return;
+
+  const selected = values.map(Number).filter(Boolean);
+  const label = root.querySelector("[data-tag-label]");
+  const hiddenInput = root.querySelector("[data-tag-input]");
+  const previewId = root.dataset.previewTarget;
+  const preview = previewId ? document.getElementById(previewId) : root.parentElement?.querySelector(".tag-preview");
+  const checkboxes = root.querySelectorAll(".tag-option input[type='checkbox']");
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = selected.includes(Number(checkbox.value));
+  });
+
+  hiddenInput.value = selected.join(",");
+
+  if (label) {
+    if (!selected.length) {
+      label.textContent = "Choose listing tags";
+    } else if (selected.length === 1) {
+      const tag = tagsCache.find((item) => Number(item.id) === selected[0]);
+      label.textContent = tag ? `${tag.name}` : "1 tag selected";
+    } else {
+      label.textContent = `${selected.length} tags selected`;
+    }
+  }
+
+  if (preview) {
+    preview.innerHTML = renderSelectedTagBadges(selected);
+  }
+}
+
+function initTagSelect(root, defaultValues = []) {
+  if (!root) return;
+
+  const trigger = root.querySelector("[data-tag-trigger]");
+  const menu = root.querySelector("[data-tag-menu]");
+  const optionsContainer = root.querySelector(".tag-option-list");
+  if (!trigger || !menu || !optionsContainer) return;
+
+  optionsContainer.innerHTML = renderTagOptions(defaultValues);
+  setTagSelection(root, defaultValues);
+
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = !menu.classList.contains("hidden");
+    document.querySelectorAll(".tag-select-menu").forEach((element) => element.classList.add("hidden"));
+    document.querySelectorAll(".tag-select-trigger").forEach((element) => element.setAttribute("aria-expanded", "false"));
+    if (!isOpen) {
+      menu.classList.remove("hidden");
+      trigger.setAttribute("aria-expanded", "true");
+    }
+  });
+
+  optionsContainer.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const selected = Array.from(optionsContainer.querySelectorAll("input:checked"))
+        .map((item) => Number(item.value))
+        .filter(Boolean);
+      setTagSelection(root, selected);
+    });
+  });
+}
+
+function closeTagMenus() {
+  document.querySelectorAll(".tag-select-menu").forEach((element) => element.classList.add("hidden"));
+  document.querySelectorAll(".tag-select-trigger").forEach((element) => element.setAttribute("aria-expanded", "false"));
+}
+
+function readTagSelection(scope) {
+  const input = scope.querySelector("[data-tag-input], input[name='tags']");
+  if (!input?.value) return [];
+  return input.value.split(",").map((value) => Number(value.trim())).filter(Boolean);
 }
 
 function renderMediaThumb(url, alt) {
@@ -36,18 +166,14 @@ function renderMediaThumb(url, alt) {
   `;
 }
 
-function renderScreenshotStrip(screenshots, appName) {
-  const items = Array.isArray(screenshots) ? screenshots : [];
-  if (!items.length) {
-    return `<div class="media-strip empty-thumb"><span class="muted">No screenshots</span></div>`;
-  }
-  return `
-    <div class="media-strip">
-      ${items.slice(0, 6).map((url, index) => `
-        <img src="${escapeHtml(ui.assetUrl(url))}" alt="${escapeHtml(appName)} screenshot ${index + 1}" loading="lazy" />
-      `).join("")}
-    </div>
-  `;
+function initDynamicTagSelects(scope = document) {
+  scope.querySelectorAll("[data-tag-select]").forEach((root) => {
+    if (root.dataset.bound === "true") return;
+    root.dataset.bound = "true";
+    const input = root.querySelector("[data-tag-input]");
+    const defaultValues = input?.value ? input.value.split(",").map((value) => Number(value.trim())).filter(Boolean) : [];
+    initTagSelect(root, defaultValues);
+  });
 }
 
 async function loadApps() {
@@ -55,15 +181,20 @@ async function loadApps() {
     ui.renderEmpty(appsGrid, "Become a developer to manage your apps here.");
     return;
   }
+
+  ui.renderCardSkeletons(appsGrid, 3);
+
   const status = document.getElementById("statusFilter").value;
   const params = new URLSearchParams();
   params.set("mine", "true");
   if (status) params.set("status", status);
   params.set("limit", 12);
+
   const data = await api.get(`/apps?${params.toString()}`);
   const items = data.items || data.apps || data.data || [];
   if (!items.length) return ui.renderEmpty(appsGrid, "No apps found.");
-  appsGrid.innerHTML = items.map(app => `
+
+  appsGrid.innerHTML = items.map((app) => `
     <div class="card">
       <div class="split-row">
         <div>
@@ -77,71 +208,17 @@ async function loadApps() {
         <a class="button secondary" data-versions="${app.id}" href="${ui.pageUrl(`pages/developer/versions.html?id=${app.id}`)}">Versions</a>
         <a class="button ghost" href="${ui.pageUrl(`pages/developer/analytics.html?id=${app.id}`)}">Analytics</a>
         <button class="button" data-submit="${app.id}">Submit</button>
-        <button class="button ghost" data-edit="${app.id}">Edit</button>
-      </div>
-      <div class="edit-form hidden" data-edit-form="${app.id}">
-        <div class="form-row">
-          <label>Name</label>
-          <input class="input" type="text" name="name" value="${escapeHtml(app.name)}" />
-        </div>
-        <div class="form-row">
-          <label>Description</label>
-          <textarea class="input" name="description">${escapeHtml(app.description || "")}</textarea>
-        </div>
-        <div class="form-row">
-          <label>Category</label>
-          <select class="input" name="categoryId">
-            ${renderCategoryOptions(app.category?.id)}
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Tags (comma separated IDs)</label>
-          <input class="input" type="text" name="tags" value="${renderTagsValue(app.tags)}" />
-        </div>
-        <div class="media-preview">
-          <div>
-            <p class="media-label">Icon</p>
-            ${renderMediaThumb(app.iconUrl, `${app.name} icon`)}
-          </div>
-          <div>
-            <p class="media-label">Banner</p>
-            ${renderMediaThumb(app.bannerUrl, `${app.name} banner`)}
-          </div>
-          <div class="media-wide">
-            <p class="media-label">Screenshots</p>
-            ${renderScreenshotStrip(app.screenshots, app.name)}
-          </div>
-        </div>
-        <div class="form-row">
-          <label>Icon image</label>
-          <input class="input" type="file" name="icon" accept="image/*" />
-        </div>
-        <div class="form-row">
-          <label>Banner image</label>
-          <input class="input" type="file" name="banner" accept="image/*" />
-        </div>
-        <div class="form-row">
-          <label>Screenshots</label>
-          <input class="input" type="file" name="screenshots" accept="image/*" multiple />
-          <label class="checkbox">
-            <input type="checkbox" name="replaceScreenshots" />
-            Replace existing screenshots
-          </label>
-        </div>
-        <div class="toolbar" style="margin-top: 12px;">
-          <button class="button secondary" data-save="${app.id}">Save</button>
-          <button class="button ghost" data-cancel="${app.id}">Cancel</button>
-          <button class="button ghost" data-upload="${app.id}">Upload Media</button>
-        </div>
+        <a class="button ghost" href="${ui.pageUrl(`pages/developer/edit.html?id=${app.id}`)}">Edit</a>
       </div>
     </div>
   `).join("");
 
-  appsGrid.querySelectorAll("button[data-submit]").forEach(btn => {
+  appsGrid.querySelectorAll("button[data-submit]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       try {
         await api.post(`/apps/${btn.dataset.submit}/submit`, {});
         ui.toast("Submitted for review", "success");
+        ui.success("Your app listing has been forwarded for moderation.", "Sent for review");
         loadApps();
       } catch (err) {
         ui.toast(err.message || "Submit failed", "error");
@@ -149,113 +226,37 @@ async function loadApps() {
     });
   });
 
-  appsGrid.querySelectorAll("a[data-versions]").forEach(link => {
+  appsGrid.querySelectorAll("a[data-versions]").forEach((link) => {
     link.addEventListener("click", () => {
       sessionStorage.setItem("lastAppId", link.dataset.versions);
     });
   });
 
-  appsGrid.querySelectorAll("button[data-edit]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.edit}"]`);
-      if (form) form.classList.toggle("hidden");
-    });
-  });
-
-  appsGrid.querySelectorAll("button[data-cancel]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.cancel}"]`);
-      if (form) form.classList.add("hidden");
-    });
-  });
-
-  appsGrid.querySelectorAll("button[data-save]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.save}"]`);
-      if (!form) return;
-      const name = form.querySelector("input[name='name']").value.trim();
-      const description = form.querySelector("textarea[name='description']").value.trim();
-      const categoryId = Number(form.querySelector("select[name='categoryId']").value);
-      const tagsRaw = form.querySelector("input[name='tags']").value;
-      const tags = tagsRaw
-        ? tagsRaw.split(",").map(t => Number(t.trim())).filter(Boolean)
-        : [];
-
-      if (!name || !description || !categoryId) {
-        ui.toast("Name, description, and category are required", "error");
-        return;
-      }
-
-      const payload = { name, description, categoryId, tags };
-      ui.setLoading(btn, true);
-      try {
-        await api.patch(`/apps/${btn.dataset.save}`, payload);
-        ui.toast("App updated", "success");
-        loadApps();
-      } catch (err) {
-        ui.toast(err.message || "Update failed", "error");
-      } finally {
-        ui.setLoading(btn, false);
-      }
-    });
-  });
-
-  appsGrid.querySelectorAll("button[data-upload]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const form = appsGrid.querySelector(`[data-edit-form="${btn.dataset.upload}"]`);
-      if (!form) return;
-      const iconFile = form.querySelector("input[name='icon']")?.files?.[0];
-      const bannerFile = form.querySelector("input[name='banner']")?.files?.[0];
-      const screenshotFiles = form.querySelector("input[name='screenshots']")?.files || [];
-      const replaceScreens = form.querySelector("input[name='replaceScreenshots']")?.checked;
-
-      if (!iconFile && !bannerFile && !screenshotFiles.length) {
-        ui.toast("Select at least one image to upload", "error");
-        return;
-      }
-
-      const formData = new FormData();
-      if (iconFile) formData.append("icon", iconFile);
-      if (bannerFile) formData.append("banner", bannerFile);
-      if (screenshotFiles.length) {
-        Array.from(screenshotFiles).forEach((file) => formData.append("screenshots", file));
-      }
-      formData.append("mode", replaceScreens ? "replace" : "append");
-
-      ui.setLoading(btn, true);
-      try {
-        await api.postForm(`/apps/${btn.dataset.upload}/media`, formData);
-        ui.toast("Media uploaded", "success");
-        await loadApps();
-      } catch (err) {
-        ui.toast(err.message || "Upload failed", "error");
-      } finally {
-        ui.setLoading(btn, false);
-      }
-    });
-  });
 }
 
-createForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+createForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
   if (!auth.hasRole("DEVELOPER")) {
     ui.toast("Become a developer to create apps", "error");
     return;
   }
+
   const formData = Object.fromEntries(new FormData(createForm));
-  const tags = formData.tags ? formData.tags.split(",").map(t => Number(t.trim())).filter(Boolean) : [];
   const payload = {
     name: formData.name,
     description: formData.description,
     categoryId: Number(formData.categoryId),
-    tags
+    tags: readTagSelection(createForm)
   };
+
   const btn = createForm.querySelector("button");
   ui.setLoading(btn, true);
   try {
     await api.post("/apps", payload);
     ui.toast("App created", "success");
+    ui.success("Your app was created successfully. You can now upload media and release files.", "Listing created");
     createForm.reset();
+    setTagSelection(createForm.querySelector("[data-tag-select='create']"), []);
     loadApps();
   } catch (err) {
     ui.toast(err.message || "Create failed", "error");
@@ -265,7 +266,7 @@ createForm.addEventListener("submit", async (e) => {
 });
 
 document.getElementById("reloadApps").addEventListener("click", () => {
-  loadApps().catch(err => ui.toast(err.message || "Load failed", "error"));
+  loadApps().catch((err) => ui.toast(err.message || "Load failed", "error"));
 });
 
 becomeDevBtn.addEventListener("click", async () => {
@@ -273,10 +274,13 @@ becomeDevBtn.addEventListener("click", async () => {
     const result = await api.post("/auth/become-developer", {});
     if (result.status === "PENDING") {
       ui.toast("Developer request submitted", "success");
+      ui.success("Your developer access request is now pending admin approval.", "Request submitted");
     } else if (result.status === "APPROVED") {
       ui.toast("Developer access approved. Refresh session.", "success");
+      ui.success("Refresh your session to continue as a developer.", "Access approved");
     } else {
       ui.toast("Developer request updated", "success");
+      ui.success("Your developer request status has been updated.", "Request updated");
     }
     await loadDeveloperStatus();
   } catch (err) {
@@ -353,14 +357,25 @@ async function loadDeveloperStatus() {
 }
 
 function escapeHtml(text) {
-  return String(text || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
-  })[c]);
+  return String(text || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".tag-select")) {
+    closeTagMenus();
+  }
+});
 
 (async () => {
   try {
-    await loadCategories();
+    await Promise.all([loadCategories(), loadTags()]);
+    initDynamicTagSelects(document);
     await loadDeveloperStatus();
     await loadApps();
   } catch (err) {

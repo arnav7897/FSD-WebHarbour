@@ -49,60 +49,28 @@
         </div>
       </header>
 
-      <main class="store-content">
-        <section class="store-hero fade-up">
-          <h1 class="hero-title">Find trusted apps, tools, and releases.</h1>
-          <p class="hero-sub">Browse curated collections, chart toppers, and the newest releases across the WebHarbour store.</p>
-          <div class="hero-search">
-            <span class="search-icon" aria-hidden="true"></span>
-            <input class="input" type="search" placeholder="Search for productivity, design, dev tools..." />
-            <button class="button">Search</button>
+      <main class="store-content app-detail-page">
+        <section class="store-hero app-detail-hero fade-up">
+          <div class="app-detail-copy">
+            <span class="hero-pill">App profile</span>
+            <h1 class="hero-title">Explore the app before you install.</h1>
+            <p class="hero-sub">A cleaner overview of screenshots, ratings, version history, and user feedback so people can decide faster with confidence.</p>
+          </div>
+          <div class="app-detail-teaser">
+            <div class="detail-teaser-card">
+              <p class="hero-label">What's improved</p>
+              <h3>Store-like detail experience</h3>
+              <p>Ratings are easier to scan, screenshots feel browseable, and content is arranged in a simpler reading flow.</p>
+            </div>
           </div>
         </section>
 
         <section class="store-section fade-up delay-1">
-          <div class="feature-grid">
-            <article class="feature-card">
-              <div class="feature-icon">C</div>
-              <h3>Curated</h3>
-              <p>Handpicked apps from trusted creators to keep your workflow sharp.</p>
-            </article>
-            <article class="feature-card">
-              <div class="feature-icon">T</div>
-              <h3>Trusted</h3>
-              <p>Verified developers, transparent reviews, and secure releases.</p>
-            </article>
-            <article class="feature-card">
-              <div class="feature-icon">F</div>
-              <h3>Fast</h3>
-              <p>Instant access to the latest versions and curated update notes.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="store-section fade-up delay-2">
-          <div class="section-head">
-            <h2 class="section-title">Browse categories</h2>
-            <span class="muted">Pick a focus to explore.</span>
-          </div>
-          <div class="category-grid">
-            <button class="category-pill">Productivity</button>
-            <button class="category-pill">Developer Tools</button>
-            <button class="category-pill">Design</button>
-            <button class="category-pill">AI & Automation</button>
-            <button class="category-pill">Security</button>
-            <button class="category-pill">Utilities</button>
-            <button class="category-pill">Education</button>
-            <button class="category-pill">Business</button>
-          </div>
-        </section>
-
-        <section class="store-section fade-up delay-3">
           <div class="section-head">
             <h2 class="section-title">App details</h2>
-            <span class="muted">Release info and actions.</span>
+            <span class="muted">Overview, rating signals, and install actions.</span>
           </div>
-          <div id="appHeader" class="card" aria-busy="true">
+          <div id="appHeader" class="card app-detail-shell" aria-busy="true">
             <div class="skeleton-line lg skeleton"></div>
             <div class="skeleton-line md skeleton"></div>
             <div class="skeleton-line sm skeleton"></div>
@@ -117,12 +85,14 @@
         <section class="store-section fade-up delay-4">
           <div class="section-head">
             <h2 class="section-title">Screenshots</h2>
-            <span class="muted">Preview the app in action.</span>
+            <span class="muted">Swipe through a cleaner preview gallery.</span>
           </div>
-          <div id="screenshotGrid" class="screenshot-grid" aria-busy="true">
-            <div class="skeleton-card">
-              <div class="skeleton-line lg skeleton"></div>
-              <div class="skeleton-line md skeleton"></div>
+          <div id="screenshotGrid" class="screenshot-carousel card" aria-busy="true">
+            <div class="screenshot-loading">
+              <div class="skeleton-card">
+                <div class="skeleton-line lg skeleton"></div>
+                <div class="skeleton-line md skeleton"></div>
+              </div>
             </div>
           </div>
         </section>
@@ -155,31 +125,41 @@
         <section class="store-section fade-up delay-5">
           <div class="section-head">
             <h2 class="section-title">Reviews</h2>
-            <span class="muted">Share your experience.</span>
+            <span class="muted">Ratings summary, recent feedback, and batch loading.</span>
           </div>
-          <div class="card">
-            <form id="reviewForm">
-              <div class="form-row">
-                <label>Rating (1-5)</label>
-                <input class="input" type="number" name="rating" min="1" max="5" required />
-              </div>
-              <div class="form-row">
-                <label>Title</label>
-                <input class="input" type="text" name="title" />
-              </div>
-              <div class="form-row">
-                <label>Comment</label>
-                <textarea class="input" name="comment"></textarea>
-              </div>
-              <button class="button" type="submit">Submit review</button>
-            </form>
+          <div class="review-layout">
+            <div id="reviewSummary" class="card review-summary-card" aria-busy="true">
+              <div class="skeleton-line lg skeleton"></div>
+              <div class="skeleton-line md skeleton"></div>
+              <div class="skeleton-line sm skeleton"></div>
+            </div>
+            <div class="card review-form-card">
+              <form id="reviewForm">
+                <div class="form-row">
+                  <label>Rating (1-5)</label>
+                  <input class="input" type="number" name="rating" min="1" max="5" required />
+                </div>
+                <div class="form-row">
+                  <label>Title</label>
+                  <input class="input" type="text" name="title" placeholder="Short headline for your review" />
+                </div>
+                <div class="form-row">
+                  <label>Comment</label>
+                  <textarea class="input" name="comment" rows="5" placeholder="What stood out, what could improve, and how the app feels to use"></textarea>
+                </div>
+                <button class="button" type="submit">Submit review</button>
+              </form>
+            </div>
           </div>
-          <div id="reviewList" aria-busy="true">
+          <div id="reviewList" class="review-list" aria-busy="true">
             <div class="card skeleton-card">
               <div class="skeleton-line lg skeleton"></div>
               <div class="skeleton-line md skeleton"></div>
               <div class="skeleton-line sm skeleton"></div>
             </div>
+          </div>
+          <div class="review-load-more-wrap">
+            <button class="button ghost hidden" id="reviewLoadMore" type="button">Load more reviews</button>
           </div>
         </section>
 

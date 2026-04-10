@@ -40,7 +40,19 @@ npm test
 - `REFRESH_TOKEN_EXPIRES_IN` (default: `7d`)
 - `PASSWORD_RESET_TOKEN_EXPIRES_IN` (default: `15m`)
 - `AUTH_EXPOSE_DEBUG_TOKENS` (default: `true` in non-production)
-- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required for ZIP upload)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required for image uploads)
+- `FILE_STORAGE_PROVIDER` (`s3` or `local`)
+- `FILE_STORAGE_REGION`
+- `FILE_STORAGE_BUCKET`
+- `FILE_STORAGE_ENDPOINT`
+- `FILE_STORAGE_ACCESS_KEY_ID`
+- `FILE_STORAGE_SECRET_ACCESS_KEY`
+- `FILE_STORAGE_FORCE_PATH_STYLE`
+- `FILE_STORAGE_SIGNED_URL_TTL_SECONDS`
+- `FILE_STORAGE_PREFIX_RELEASES`
+- `FILE_STORAGE_PREFIX_ASSETS`
+- `VERSION_UPLOAD_MAX_BYTES`
+- `ASSET_UPLOAD_MAX_BYTES`
 - `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (optional seed config)
 
 ## Auth and Role Model
@@ -112,6 +124,10 @@ Common status codes:
 | `POST` | `/apps/:id/publish` | Bearer (`DEVELOPER`, owner) | Deprecated direct publish endpoint (returns conflict) | Legacy only; do not use |
 | `POST` | `/apps/:id/versions` | Bearer (`DEVELOPER`, owner) | Create app version | Release management |
 | `POST` | `/apps/:id/versions/upload` | Bearer (`DEVELOPER`, owner) | Upload ZIP + create version | Release management |
+| `POST` | `/apps/:id/assets/upload` | Bearer (`DEVELOPER`, owner) | Upload app-level documents/attachments | Developer publishing workflow |
+| `GET` | `/apps/:id/assets` | No | List app-level assets | Public/developer asset listing |
+| `GET` | `/apps/:id/assets/:assetId/download` | No | Redirect to signed file URL | Public/developer asset download |
+| `DELETE` | `/apps/:id/assets/:assetId` | Bearer (`DEVELOPER`, owner) | Delete app asset | Developer asset management |
 | `GET` | `/apps/:id/versions` | No | List app versions | Version history UI |
 
 ### Tracking and Favorites

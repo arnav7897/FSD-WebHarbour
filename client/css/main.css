@@ -311,6 +311,100 @@ label {
   border: 1px solid var(--line);
 }
 
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 18, 14, 0.42);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 120;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.success-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.success-popup {
+  width: min(420px, 100%);
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ffffff, #f4fbf7);
+  border: 1px solid rgba(59, 178, 115, 0.18);
+  padding: 30px 24px 22px;
+  box-shadow: 0 24px 48px rgba(20, 31, 24, 0.2);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  text-align: center;
+  transform: translateY(18px) scale(0.95);
+  transition: transform 220ms ease;
+}
+
+.success-overlay.is-visible .success-popup {
+  transform: translateY(0) scale(1);
+}
+
+.success-popup h3 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.success-popup p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.success-badge {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+.success-badge-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 178, 115, 0.2), rgba(59, 178, 115, 0.06));
+  animation: badgePulse 1.4s ease infinite;
+}
+
+.success-badge-check {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #3bb273, #278f5c);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 700;
+  box-shadow: 0 16px 30px rgba(59, 178, 115, 0.35);
+}
+
+@keyframes badgePulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+}
+
 .empty {
   padding: var(--space-4);
   border: 1px dashed var(--line);

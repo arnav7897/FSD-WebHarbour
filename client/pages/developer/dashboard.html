@@ -68,27 +68,60 @@
         </section>
 
         <section class="store-section fade-up delay-2">
-          <div class="card">
-            <h3>Create App</h3>
-            <form id="createAppForm">
-              <div class="form-row">
-                <label>Name</label>
-                <input class="input" type="text" name="name" required />
+          <div class="card developer-create-card">
+            <div class="developer-create-copy">
+              <span class="hero-pill">Publish flow</span>
+              <h3 class="section-title">Create a storefront-ready app listing</h3>
+              <p class="muted">Add the basics first, then enrich the listing with media, files, and release versions. The form is designed to feel closer to a polished marketplace submission flow.</p>
+              <div class="developer-create-highlights">
+                <div class="developer-highlight">
+                  <strong>Clear metadata</strong>
+                  <span>Name, category, and value tags that are easy to scan.</span>
+                </div>
+                <div class="developer-highlight">
+                  <strong>Better trust signals</strong>
+                  <span>Mark listings as free, premium, verified, trending, or audited.</span>
+                </div>
+                <div class="developer-highlight">
+                  <strong>Cleaner publishing</strong>
+                  <span>Success feedback appears in a richer popup after submission.</span>
+                </div>
               </div>
-              <div class="form-row">
-                <label>Description</label>
-                <textarea class="input" name="description" required></textarea>
+            </div>
+
+            <form id="createAppForm" class="developer-publish-form">
+              <div class="publish-form-grid">
+                <div class="form-row">
+                  <label>App Name</label>
+                  <input class="input" type="text" name="name" placeholder="Example: FlowForge" required />
+                </div>
+                <div class="form-row">
+                  <label>Category</label>
+                  <select id="categorySelect" name="categoryId" required></select>
+                </div>
+                <div class="form-row publish-form-wide">
+                  <label>Description</label>
+                  <textarea class="input" name="description" rows="6" placeholder="Tell people what your app does, who it is for, and why it stands out." required></textarea>
+                </div>
+                <div class="form-row publish-form-wide">
+                  <label>Tags</label>
+                  <div class="tag-select" data-tag-select="create">
+                    <button class="input tag-select-trigger" type="button" data-tag-trigger="create" aria-expanded="false">
+                      <span data-tag-label="create">Choose listing tags</span>
+                    </button>
+                    <div class="tag-select-menu hidden" data-tag-menu="create">
+                      <div id="tagOptions" class="tag-option-list"></div>
+                    </div>
+                    <input type="hidden" name="tags" data-tag-input="create" />
+                  </div>
+                  <div id="tagPreview" class="tag-preview"></div>
+                  <p class="muted">Pick multiple tags to shape how your app is presented in the marketplace.</p>
+                </div>
               </div>
-              <div class="form-row">
-                <label>Category</label>
-                <select id="categorySelect" name="categoryId" required></select>
+              <div class="publish-form-actions">
+                <button class="button" type="submit">Create Listing</button>
+                <p class="muted">After creating, use Edit to upload icon, banner, screenshots, and product files.</p>
               </div>
-              <div class="form-row">
-                <label>Tags (comma separated IDs)</label>
-                <input class="input" type="text" name="tags" placeholder="1,2,3" />
-              </div>
-              <button class="button" type="submit">Create</button>
-              <p class="muted" style="margin-top: 10px;">After creating, use Edit to upload icon, banner, and screenshots.</p>
             </form>
           </div>
         </section>

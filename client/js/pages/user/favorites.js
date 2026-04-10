@@ -35,6 +35,7 @@ function renderIcon(app) {
 (async () => {
   try {
     if (window.__roleDenied) return;
+    ui.renderCardSkeletons(grid, 4);
     const data = await api.get("/users/me/favorites");
     const items = data.items || data.favorites || data.data || [];
     if (!items.length) return ui.renderEmpty(grid, "No favorites yet.");

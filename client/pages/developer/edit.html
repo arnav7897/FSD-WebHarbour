@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:4000;" />
+  <title>Edit App - WebHarbour</title>
+  <link rel="stylesheet" href="../../css/main.css" />
+  <link rel="stylesheet" href="../../css/store.css" />
+</head>
+<body class="store-body" data-requires-role="DEVELOPER">
+  <div class="store">
+    <aside class="store-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-section">
+          <p class="sidebar-title">Browse</p>
+          <a class="sidebar-item" href="../../index.html">Home</a>
+          <a class="sidebar-item" href="../../pages/apps/index.html">Apps</a>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Library</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Workspace</p>
+          <a class="sidebar-item" href="../../pages/user/favorites.html">Favorites</a>
+          <a class="sidebar-item is-active" data-role="DEVELOPER" href="../../pages/developer/dashboard.html">Developer</a>
+        </div>
+        <div class="sidebar-section">
+          <p class="sidebar-title">Settings</p>
+          <a class="sidebar-item" href="../../pages/user/settings.html">Account</a>
+          <a class="sidebar-item" data-role="ADMIN" href="../../pages/admin/moderation.html">Admin</a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="store-main">
+      <header class="store-topbar">
+        <div class="topbar-left">
+          <div class="logo">WH</div>
+          <div class="app-label">Apps</div>
+        </div>
+        <div class="topbar-search">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input class="input" type="search" placeholder="Search apps, tools, categories" />
+        </div>
+        <div class="topbar-actions">
+          <button class="button ghost" id="themeToggle" type="button">Dark mode</button>
+          <a class="button ghost auth-action" data-auth="guest" href="../../pages/auth/login.html">Sign In</a>
+          <a class="button auth-action" data-auth="guest" href="../../pages/auth/register.html">Create Account</a>
+          <a class="button ghost auth-action hidden logout-link" data-auth="authed" data-action="logout" href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="store-content">
+        <section class="store-hero fade-up">
+          <span class="hero-pill">Edit listing</span>
+          <h1 class="hero-title">Update your app in 3 simple steps.</h1>
+          <p class="hero-sub">Refine the listing details, refresh the storefront visuals, and review supporting files before publishing your changes.</p>
+        </section>
+
+        <section class="store-section fade-up delay-1">
+          <div class="section-head">
+            <h2 class="section-title">Edit App</h2>
+            <div class="toolbar">
+              <a class="button secondary" href="../../pages/developer/dashboard.html">Back to Dashboard</a>
+              <a class="button ghost" id="manageVersionsLink" href="#">Manage Versions</a>
+            </div>
+          </div>
+          <div class="card app-edit-shell">
+            <div class="edit-stepper" id="editStepper">
+              <button class="edit-step is-active" type="button" data-step-tab="1">
+                <span>1</span>
+                <strong>Listing details</strong>
+              </button>
+              <button class="edit-step" type="button" data-step-tab="2">
+                <span>2</span>
+                <strong>Media</strong>
+              </button>
+              <button class="edit-step" type="button" data-step-tab="3">
+                <span>3</span>
+                <strong>Files & review</strong>
+              </button>
+            </div>
+
+            <form id="editAppForm" class="app-edit-form">
+              <section class="edit-panel is-active" data-step-panel="1">
+                <div class="edit-panel-copy">
+                  <p class="hero-label">Step 1</p>
+                  <h3>Listing details</h3>
+                  <p>Update the name, summary, category, and marketplace tags that define how your app appears to users.</p>
+                </div>
+                <div class="publish-form-grid">
+                  <div class="form-row">
+                    <label>App Name</label>
+                    <input class="input" type="text" name="name" required />
+                  </div>
+                  <div class="form-row">
+                    <label>Category</label>
+                    <select class="input" id="editCategorySelect" name="categoryId" required></select>
+                  </div>
+                  <div class="form-row publish-form-wide">
+                    <label>Description</label>
+                    <textarea class="input" name="description" rows="7" required></textarea>
+                  </div>
+                  <div class="form-row publish-form-wide">
+                    <label>Tags</label>
+                    <div class="tag-select" data-tag-select="edit-main" data-preview-target="editTagPreview">
+                      <button class="input tag-select-trigger" type="button" data-tag-trigger="edit-main" aria-expanded="false">
+                        <span data-tag-label="edit-main">Choose listing tags</span>
+                      </button>
+                      <div class="tag-select-menu hidden" data-tag-menu="edit-main">
+                        <div class="tag-option-list" id="editTagOptions"></div>
+                      </div>
+                      <input type="hidden" name="tags" data-tag-input="edit-main" />
+                    </div>
+                    <div id="editTagPreview" class="tag-preview"></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="edit-panel" data-step-panel="2">
+                <div class="edit-panel-copy">
+                  <p class="hero-label">Step 2</p>
+                  <h3>Storefront media</h3>
+                  <p>Refresh the icon, banner, and screenshot gallery. If you upload nothing here, existing media stays untouched.</p>
+                </div>
+                <div class="media-preview app-edit-preview">
+                  <div>
+                    <p class="media-label">Current icon</p>
+                    <div id="editIconPreview"></div>
+                  </div>
+                  <div>
+                    <p class="media-label">Current banner</p>
+                    <div id="editBannerPreview"></div>
+                  </div>
+                  <div class="media-wide">
+                    <p class="media-label">Current screenshots</p>
+                    <div id="editScreenshotsPreview"></div>
+                  </div>
+                </div>
+                <div class="publish-form-grid">
+                  <div class="form-row">
+                    <label>Icon image</label>
+                    <input class="input" type="file" name="icon" accept="image/*" />
+                  </div>
+                  <div class="form-row">
+                    <label>Banner image</label>
+                    <input class="input" type="file" name="banner" accept="image/*" />
+                  </div>
+                  <div class="form-row publish-form-wide">
+                    <label>Screenshots</label>
+                    <input class="input" type="file" name="screenshots" accept="image/*" multiple />
+                    <label class="checkbox">
+                      <input type="checkbox" name="replaceScreenshots" />
+                      Replace existing screenshots with this new set
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <section class="edit-panel" data-step-panel="3">
+                <div class="edit-panel-copy">
+                  <p class="hero-label">Step 3</p>
+                  <h3>Files and final review</h3>
+                  <p>Optionally attach a product file, then review the listing status before submitting all changes in one final step.</p>
+                </div>
+                <div class="form-row">
+                  <label>Existing product files</label>
+                  <div id="editAssetList" class="stack"></div>
+                </div>
+                <div class="publish-form-grid">
+                  <div class="form-row">
+                    <label>File</label>
+                    <input class="input" type="file" name="assetFile" accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.zip,.rar,.7z,.tar,.gz,application/octet-stream" />
+                  </div>
+                  <div class="form-row">
+                    <label>Asset type</label>
+                    <select class="input" name="assetType">
+                      <option value="DOCUMENT">DOCUMENT</option>
+                      <option value="GUIDE">GUIDE</option>
+                      <option value="LICENSE">LICENSE</option>
+                      <option value="ARCHIVE">ARCHIVE</option>
+                      <option value="ATTACHMENT">ATTACHMENT</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label>Label</label>
+                    <input class="input" type="text" name="assetLabel" placeholder="Installation guide" />
+                  </div>
+                  <div class="form-row">
+                    <label>Description</label>
+                    <textarea class="input" name="assetDescription" placeholder="Short note about this file"></textarea>
+                  </div>
+                </div>
+                <div class="card app-edit-review">
+                  <p class="hero-label">Ready to submit</p>
+                  <h3 id="reviewName">Loading app...</h3>
+                  <p id="reviewDescription" class="muted">Review your final listing details before saving.</p>
+                  <div id="reviewBadges" class="tag-preview"></div>
+                </div>
+              </section>
+
+              <div class="app-edit-actions">
+                <button class="button ghost" type="button" id="prevStepBtn">Previous</button>
+                <div class="toolbar">
+                  <button class="button secondary" type="button" id="nextStepBtn">Next step</button>
+                  <button class="button hidden" type="submit" id="submitEditBtn">Submit changes</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="../../js/config.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/ui.js"></script>
+  <script src="../../js/nav.js"></script>
+  <script src="../../js/app.js"></script>
+  <script src="../../js/pages/theme-toggle.js"></script>
+  <script src="../../js/pages/developer/edit.js"></script>
+</body>
+</html>

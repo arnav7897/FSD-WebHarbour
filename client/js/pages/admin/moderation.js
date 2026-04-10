@@ -4,6 +4,7 @@ const developerRequests = document.getElementById("developerRequests");
 
 async function loadDeveloperRequests() {
   if (!developerRequests) return;
+  ui.renderCardSkeletons(developerRequests, 3);
   const data = await api.get("/admin/developers/requests?status=PENDING&limit=20");
   const items = data.items || data.requests || data.data || [];
   if (!items.length) return ui.renderEmpty(developerRequests, "No pending developer requests.");
@@ -45,6 +46,7 @@ async function loadDeveloperRequests() {
 }
 
 async function loadReviewApps() {
+  ui.renderCardSkeletons(reviewGrid, 3);
   const data = await api.get("/apps?status=UNDER_REVIEW&limit=20");
   const items = data.items || data.apps || data.data || [];
   if (!items.length) return ui.renderEmpty(reviewGrid, "No apps under review.");
@@ -87,6 +89,7 @@ async function loadReviewApps() {
 }
 
 async function loadLiveApps() {
+  ui.renderCardSkeletons(liveGrid, 3);
   const data = await api.get("/apps?status=PUBLISHED&limit=20");
   const items = data.items || data.apps || data.data || [];
   const suspended = await api.get("/apps?status=SUSPENDED&limit=20");

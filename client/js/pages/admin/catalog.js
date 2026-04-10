@@ -4,6 +4,8 @@ const categoryList = document.getElementById("categoryList");
 const tagList = document.getElementById("tagList");
 
 async function loadCatalog() {
+  ui.renderCardSkeletons(categoryList, 3);
+  ui.renderCardSkeletons(tagList, 3);
   const [categories, tags] = await Promise.all([
     api.get("/categories"),
     api.get("/tags")
@@ -19,6 +21,7 @@ categoryForm.addEventListener("submit", async (e) => {
   try {
     await api.post("/categories", data);
     ui.toast("Category added", "success");
+    ui.success("The new category was added successfully.", "Category added");
     categoryForm.reset();
     loadCatalog();
   } catch (err) {
@@ -33,6 +36,7 @@ tagForm.addEventListener("submit", async (e) => {
   try {
     await api.post("/tags", data);
     ui.toast("Tag added", "success");
+    ui.success("The new tag was added successfully.", "Tag added");
     tagForm.reset();
     loadCatalog();
   } catch (err) {

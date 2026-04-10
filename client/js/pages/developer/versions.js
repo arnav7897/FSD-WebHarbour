@@ -16,6 +16,7 @@ const buildRedirectUrl = (versionId, includeToken = false) => {
 
 async function loadVersions() {
   if (!appId) return;
+  ui.renderCardSkeletons(versionList, 2);
   const data = await api.get(`/apps/${appId}/versions`);
   const items = Array.isArray(data) ? data : (data.items || data.versions || data.data || []);
   const sorted = [...items].sort((a, b) => {
@@ -25,7 +26,7 @@ async function loadVersions() {
   });
   if (!sorted.length) return ui.renderEmpty(versionList, "No versions yet.");
   versionList.innerHTML = sorted.map(v => {
-    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId);
+    const hasDownload = Boolean(v.downloadUrl || v.downloadPublicId || v.storageKey || v.storageObjectUrl);
     return `
     <div class="card">
       <div class="split-row">
@@ -127,6 +128,7 @@ async function handleVersionSubmit(e) {
       });
       setDebug(uploadResponse);
       ui.toast("ZIP uploaded and version created", "success");
+      ui.success("Your ZIP upload completed and the version was created.", "Version created");
       const uploadUrl = uploadResponse?.uploadUrl || uploadResponse?.downloadUrl;
       setStatus(uploadUrl ? `ZIP uploaded. URL: ${uploadUrl}` : "ZIP uploaded and version created.", "success");
     } else {
@@ -140,6 +142,7 @@ async function handleVersionSubmit(e) {
       });
       setDebug(response);
       ui.toast("Version added", "success");
+      ui.success("The new version was added successfully.", "Version added");
       setStatus("Version added.", "success");
     }
     versionForm.reset();

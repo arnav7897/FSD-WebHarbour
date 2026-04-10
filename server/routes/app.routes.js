@@ -13,6 +13,10 @@ const {
   createAppVersionHandler,
   listAppVersionsHandler,
   uploadAppVersionHandler,
+  uploadAppAssetHandler,
+  listAppAssetsHandler,
+  downloadAppAssetHandler,
+  deleteAppAssetHandler,
   downloadAppHandler,
   downloadAppRedirectHandler,
   addFavoriteHandler,
@@ -21,11 +25,17 @@ const {
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const {
+  VERSION_UPLOAD_MAX_BYTES,
+  ASSET_UPLOAD_MAX_BYTES,
+} = require('../config/env');
 
 const router = express.Router();
 const uploadDir = path.join(__dirname, '..', 'tmp', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 const upload = multer({ dest: uploadDir });
+const versionUpload = multer({ dest: uploadDir, limits: { fileSize: VERSION_UPLOAD_MAX_BYTES } });
+const assetUpload = multer({ dest: uploadDir, limits: { fileSize: ASSET_UPLOAD_MAX_BYTES } });
 
 /**
  * @openapi
@@ -286,6 +296,111 @@ router.post(
   ]),
   uploadAppMediaHandler,
 );
+
+/**
+ * @openapi
+ * /apps/{id}/assets/upload:
+ *   post:
+ *     tags: [Apps]
+ *     summary: Upload app documents or other non-image assets
+ *     description: Uploads non-image product files such as manuals, PDFs, archives, or attachments to the configured file storage provider.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               assetType:
+ *                 type: string
+ *                 enum: [DOCUMENT, GUIDE, LICENSE, ARCHIVE, ATTACHMENT, OTHER]
+ *               label:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Asset uploaded
+ */
+router.post('/:id/assets/upload', auth, requireRole('DEVELOPER'), assetUpload.single('file'), uploadAppAssetHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/assets:
+ *   get:
+ *     tags: [Apps]
+ *     summary: List app assets
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Asset list
+ */
+router.get('/:id/assets', listAppAssetsHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/assets/{assetId}/download:
+ *   get:
+ *     tags: [Apps]
+ *     summary: Download app asset
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: assetId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       302:
+ *         description: Redirect to a signed asset URL
+ */
+router.get('/:id/assets/:assetId/download', downloadAppAssetHandler);
+
+/**
+ * @openapi
+ * /apps/{id}/assets/{assetId}:
+ *   delete:
+ *     tags: [Apps]
+ *     summary: Delete an app asset
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: assetId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Asset deleted
+ */
+router.delete('/:id/assets/:assetId', auth, requireRole('DEVELOPER'), deleteAppAssetHandler);
 
 /**
  * @openapi
@@ -562,7 +677,7 @@ router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHan
  *   post:
  *     tags: [Apps]
  *     summary: Upload ZIP and create a new app version
- *     description: Uploads ZIP to Cloudinary and creates an app version with the returned download URL.
+ *     description: Uploads ZIP to the configured file storage provider and creates an app version with provider-backed download metadata.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -603,7 +718,7 @@ router.post('/:id/versions', auth, requireRole('DEVELOPER'), createAppVersionHan
  *       404:
  *         description: App not found
  */
-router.post('/:id/versions/upload', auth, requireRole('DEVELOPER'), upload.single('zip'), uploadAppVersionHandler);
+router.post('/:id/versions/upload', auth, requireRole('DEVELOPER'), versionUpload.single('zip'), uploadAppVersionHandler);
 
 /**
  * @openapi
