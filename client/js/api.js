@@ -9,10 +9,14 @@ const api = (() => {
       headers["Content-Type"] = "application/json";
     }
 
+
     const res = await fetch(`${base()}${path}`, { ...options, headers });
     if (res.status === 401 && retry) {
       const refreshed = await auth.refresh();
       if (refreshed) return request(path, options, false);
+    
+    
+    
     }
 
     const text = await res.text();
@@ -38,5 +42,7 @@ const api = (() => {
   const patch = (path, body) => request(path, { method: "PATCH", body: JSON.stringify(body || {}) });
   const del = (path) => request(path, { method: "DELETE" });
 
+
+  
   return { get, post, postForm, patch, del };
 })();

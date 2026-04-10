@@ -87,6 +87,12 @@ Goal: Build full production-style frontend on top of stabilized backend APIs.
   - overview metrics
   - per-app trend charts
 
+### 3.5 Payment Integration (New Phase)
+- Integrate Razorpay for secure payments
+- Implement payment flow for premium apps
+- Handle payment success/failure callbacks
+- Update app pricing and purchase tracking
+
 ### 4. Admin Features
 - Moderation panel:
   - approve/reject/suspend/unsuspend apps
