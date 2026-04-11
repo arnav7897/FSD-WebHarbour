@@ -55,5 +55,5 @@ function escapeHtml(text) {
 }
 
 if (!window.__roleDenied) {
-  loadCatalog().catch(err => ui.toast(err.message || "Load failed", "error"));
+  loadCatalog().catch(err => ui.toast(err.message || "Loading failed", "error"));
 }
