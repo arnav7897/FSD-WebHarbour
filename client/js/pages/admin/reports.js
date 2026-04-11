@@ -55,6 +55,10 @@ function escapeHtml(text) {
   })[c]);
 }
 
+
+
+
+
 document.getElementById("apply").addEventListener("click", () => {
   if (window.__roleDenied) return;
   loadReports().catch(err => ui.toast(err.message || "Load failed", "error"));

@@ -14,6 +14,10 @@ async function loadCatalog() {
   tagList.innerHTML = tags.map(t => `<span class="badge">${escapeHtml(t.name)}</span>`).join(" ");
 }
 
+
+
+
+
 categoryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (window.__roleDenied) return;

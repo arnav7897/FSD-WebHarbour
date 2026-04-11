@@ -19,6 +19,10 @@ async function loadDeveloperRequests() {
       </div>
     </div>
   `).join("");
+   
+
+
+
 
   developerRequests.querySelectorAll("button[data-approve-dev]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -108,7 +112,13 @@ async function loadLiveApps() {
       </div>
     </div>
   `).join("");
+    
 
+
+
+
+
+  
   liveGrid.querySelectorAll("button[data-suspend]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const reason = prompt("Suspension reason:");
