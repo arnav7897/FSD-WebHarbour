@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌐 FSD-WebHarbour
+# FSD-WebHarbour
 
 **A full-stack app marketplace platform built with Node.js, Express, Prisma & vanilla JavaScript**
 
@@ -16,7 +16,7 @@
 
 ---
 
-## 📖 Overview
+## Overview
 
 WebHarbour is a production-grade app marketplace where **users** discover and download apps, **developers** publish and manage their listings, and **admins** govern the platform through moderation, trust & safety, and catalog management.
 
@@ -27,7 +27,7 @@ The project follows a decoupled client–server architecture:
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 FSD-WebHarbour/
@@ -68,7 +68,7 @@ FSD-WebHarbour/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -115,7 +115,7 @@ npm run dev
 
 ---
 
-## ✅ Backend — Build Phases
+## Backend — Build Phases
 
 ### Phase 1 · Foundation
 - Express server bootstrapped with modular structure (`controllers/`, `services/`, `routes/`, `middleware/`, `config/`)
@@ -148,7 +148,7 @@ npm run dev
 
 ---
 
-## 🎨 Frontend — Feature Overview
+## Frontend — Feature Overview
 
 ### User-Facing Pages
 | Page | Features |
@@ -177,7 +177,7 @@ npm run dev
 
 ---
 
-## 💳 Payment Integration
+## Payment Integration
 
 - **Stripe Checkout** — users purchase premium apps through a hosted Stripe Checkout session
 - **Platform Fee** — 20% commission automatically split via `payment_intent_data.application_fee_amount`
@@ -186,7 +186,7 @@ npm run dev
 
 ---
 
-## 🔒 Security
+## Security
 
 | Layer | Implementation |
 |-------|---------------|
@@ -199,7 +199,7 @@ npm run dev
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 Full interactive API documentation is available at **`/docs`** when the server is running (Swagger UI).
 
@@ -219,7 +219,7 @@ Key endpoint groups:
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 cd server
@@ -238,7 +238,7 @@ The automated test suite covers:
 
 ---
 
-## 👥 Team Allocation (4 Members)
+## Team Allocation (4 Members)
 
 | Member | Responsibility |
 |--------|---------------|
@@ -249,6 +249,6 @@ The automated test suite covers:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
